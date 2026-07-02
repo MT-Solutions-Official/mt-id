@@ -1,4 +1,4 @@
-package com.mtsolutions.model;
+package com.mtsolutions.domain.model;
 
 import lombok.*;
 

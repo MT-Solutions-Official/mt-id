@@ -19,7 +19,7 @@ quarkus:
         - Accept
 
   mongodb:
-    connection-string: ${APP_MT_ID_MONGODB_ENDPOINT:localhost:27017}
+    connection-string: ${APP_MT_ID_MONGODB_ENDPOINT:mongodb://localhost:27017/}
     database: ${APP_MT_ID_MONGODB_DATABASE:mt-id}
 
 
@@ -29,7 +29,7 @@ quarkus:
     try-it-out-enabled: true
     persist-authorization: true
     always-include: true
-    path: swagger-ui
+    path: /swagger-ui
 
   smallrye-openapi:
     info-title: MT ID API Documentation
@@ -40,3 +40,7 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
 
+app:
+  mt:
+    id:
+      timezone: ${APP_MT_ID_TIMEZONE:America/Sao_Paulo}

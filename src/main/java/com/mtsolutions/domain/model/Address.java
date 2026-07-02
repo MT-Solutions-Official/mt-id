@@ -1,6 +1,6 @@
-package com.mtsolutions.model;
+package com.mtsolutions.domain.model;
 
-import com.mtsolutions.constant.Country;
+import com.mtsolutions.domain.constant.Country;
 import lombok.*;
 
 @AllArgsConstructor

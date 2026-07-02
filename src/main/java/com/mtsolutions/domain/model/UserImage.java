@@ -1,6 +1,6 @@
-package com.mtsolutions.model;
+package com.mtsolutions.domain.model;
 
-import com.mtsolutions.constant.ImageType;
+import com.mtsolutions.domain.constant.ImageType;
 import lombok.*;
 
 import java.time.LocalDateTime;

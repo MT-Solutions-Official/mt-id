@@ -1,7 +1,7 @@
-package com.mtsolutions.entity;
+package com.mtsolutions.domain.entity;
 
-import com.mtsolutions.model.*;
-import com.mtsolutions.constant.MaritalStatus;
+import com.mtsolutions.domain.model.*;
+import com.mtsolutions.domain.constant.MaritalStatus;
 import io.quarkus.mongodb.panache.common.MongoEntity;
 import lombok.*;
 import org.bson.BsonType;

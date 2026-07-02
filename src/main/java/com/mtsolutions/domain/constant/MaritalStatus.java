@@ -1,4 +1,4 @@
-package com.mtsolutions.constant;
+package com.mtsolutions.domain.constant;
 
 import lombok.Getter;
 

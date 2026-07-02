@@ -1,4 +1,4 @@
-package com.mtsolutions.entity;
+package com.mtsolutions.domain.entity;
 
 import io.quarkus.mongodb.panache.common.MongoEntity;
 import lombok.*;
