@@ -1,6 +1,6 @@
 package com.mtsolutions.domain.controller;
 
-import com.mtsolutions.domain.dto.CreateUserRoleRequestDto;
+import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.entity.UserRole;
 import com.mtsolutions.domain.service.UserRoleService;
 import jakarta.enterprise.context.ApplicationScoped;

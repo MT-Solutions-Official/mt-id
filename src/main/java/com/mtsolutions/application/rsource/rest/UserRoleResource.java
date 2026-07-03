@@ -2,7 +2,7 @@ package com.mtsolutions.application.rsource.rest;
 
 import com.mtsolutions.application.rsource.rest.examples.UserRoleExamples;
 import com.mtsolutions.domain.controller.UserRoleController;
-import com.mtsolutions.domain.dto.CreateUserRoleRequestDto;
+import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.entity.UserRole;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;

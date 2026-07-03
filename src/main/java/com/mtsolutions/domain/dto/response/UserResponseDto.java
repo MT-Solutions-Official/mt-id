@@ -1,4 +1,4 @@
-package com.mtsolutions.domain.dto;
+package com.mtsolutions.domain.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mtsolutions.domain.constant.MaritalStatus;

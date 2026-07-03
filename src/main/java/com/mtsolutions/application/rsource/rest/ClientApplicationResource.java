@@ -2,10 +2,10 @@ package com.mtsolutions.application.rsource.rest;
 
 import com.mtsolutions.application.rsource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ClientApplicationController;
-import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
-import com.mtsolutions.domain.dto.ClientApplicationResponseDto;
-import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
-import com.mtsolutions.domain.dto.UpdateRequiredUserFieldsRequestDto;
+import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;
+import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;

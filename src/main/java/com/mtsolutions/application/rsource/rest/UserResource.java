@@ -2,8 +2,8 @@ package com.mtsolutions.application.rsource.rest;
 
 import com.mtsolutions.application.rsource.rest.examples.UserExamples;
 import com.mtsolutions.domain.controller.UserController;
-import com.mtsolutions.domain.dto.CreateUserRequestDto;
-import com.mtsolutions.domain.dto.UserResponseDto;
+import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
+import com.mtsolutions.domain.dto.response.UserResponseDto;
 import com.mtsolutions.domain.entity.User;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;

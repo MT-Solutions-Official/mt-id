@@ -1,4 +1,4 @@
-package com.mtsolutions.domain.dto;
+package com.mtsolutions.domain.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 

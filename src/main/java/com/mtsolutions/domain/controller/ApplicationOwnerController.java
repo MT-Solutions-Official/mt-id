@@ -1,6 +1,6 @@
 package com.mtsolutions.domain.controller;
 
-import com.mtsolutions.domain.dto.CreateApplicationOwnerRequestDto;
+import com.mtsolutions.domain.dto.request.CreateApplicationOwnerRequestDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.service.ApplicationOwnerService;
 import jakarta.enterprise.context.ApplicationScoped;

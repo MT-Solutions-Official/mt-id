@@ -1,9 +1,8 @@
 package com.mtsolutions.application.rsource.rest;
 
 import com.mtsolutions.application.rsource.rest.examples.ApplicationOwnerExamples;
-import com.mtsolutions.application.rsource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ApplicationOwnerController;
-import com.mtsolutions.domain.dto.CreateApplicationOwnerRequestDto;
+import com.mtsolutions.domain.dto.request.CreateApplicationOwnerRequestDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;

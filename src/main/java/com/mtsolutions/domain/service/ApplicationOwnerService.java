@@ -1,8 +1,8 @@
 package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.utils.DateUtils;
-import com.mtsolutions.domain.dto.CreateApplicationOwnerRequestDto;
-import com.mtsolutions.domain.dto.CreateDocumentRequestDto;
+import com.mtsolutions.domain.dto.request.CreateApplicationOwnerRequestDto;
+import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;

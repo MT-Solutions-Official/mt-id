@@ -1,6 +1,6 @@
 package com.mtsolutions.domain.controller;
 
-import com.mtsolutions.domain.dto.CreateUserRequestDto;
+import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
 import com.mtsolutions.domain.entity.User;
 import com.mtsolutions.domain.service.UserService;
 import jakarta.enterprise.context.ApplicationScoped;

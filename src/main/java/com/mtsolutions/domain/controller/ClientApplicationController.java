@@ -1,8 +1,8 @@
 package com.mtsolutions.domain.controller;
 
-import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
-import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
-import com.mtsolutions.domain.dto.UpdateRequiredUserFieldsRequestDto;
+import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.service.ClientApplicationService;
 import jakarta.enterprise.context.ApplicationScoped;

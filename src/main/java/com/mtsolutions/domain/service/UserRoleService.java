@@ -2,7 +2,7 @@ package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.exception.UserRoleAlreadyExistsException;
 import com.mtsolutions.application.exception.UserRoleNotFoundException;
-import com.mtsolutions.domain.dto.CreateUserRoleRequestDto;
+import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.entity.UserRole;
 import com.mtsolutions.domain.repository.UserRoleRepository;
 import jakarta.enterprise.context.ApplicationScoped;
