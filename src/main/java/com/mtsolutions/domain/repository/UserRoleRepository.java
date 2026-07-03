@@ -1,8 +1,10 @@
 package com.mtsolutions.domain.repository;
 
+import com.mtsolutions.application.exception.UserRoleNotFoundException;
 import com.mtsolutions.domain.entity.UserRole;
 import io.quarkus.mongodb.panache.PanacheMongoRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.bson.types.ObjectId;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,5 +28,16 @@ public class UserRoleRepository implements PanacheMongoRepositoryBase<UserRole, 
                 .map(String::toUpperCase)
                 .toList();
         return find("appId = ?1 and roleName in ?2", appId, normalizedRoleNames).list();
+    }
+
+    public UserRole findUserRoleById(String userRoleId) {
+        if (!ObjectId.isValid(userRoleId)) throw new UserRoleNotFoundException();
+
+        return find("_id", new ObjectId(userRoleId)).firstResultOptional()
+                .orElseThrow(UserRoleNotFoundException::new);
+    }
+
+    public List<UserRole> findByAppId(String appId) {
+        return find("appId", appId).list();
     }
 }

@@ -3,6 +3,7 @@ package com.mtsolutions.domain.service;
 import com.mtsolutions.application.exception.UserRoleAlreadyExistsException;
 import com.mtsolutions.application.exception.UserRoleNotFoundException;
 import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateUserRoleRequestDto;
 import com.mtsolutions.domain.entity.UserRole;
 import com.mtsolutions.domain.repository.UserRoleRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -44,6 +45,38 @@ public class UserRoleService {
         log.info("User role created with ID: {}", userRole.getUserRoleId());
 
         return userRole;
+    }
+
+    public UserRole findUserRoleById(String userRoleId) {
+        return this.userRoleRepository.findUserRoleById(userRoleId);
+    }
+
+    public List<UserRole> findUserRolesByAppId(String appId) {
+        this.clientApplicationService.findClientApplicationById(appId);
+        return this.userRoleRepository.findByAppId(appId);
+    }
+
+    public UserRole updateUserRole(UpdateUserRoleRequestDto request) {
+        UserRole userRole = this.userRoleRepository.findUserRoleById(request.userRoleId());
+        String normalizedRoleName = this.normalizeRoleName(request.roleName());
+
+        this.userRoleRepository.findByAppIdAndRoleName(userRole.getAppId(), normalizedRoleName)
+                .filter(existingRole -> !existingRole.getUserRoleId().equals(userRole.getUserRoleId()))
+                .ifPresent(existingRole -> {
+                    throw new UserRoleAlreadyExistsException(normalizedRoleName);
+                });
+
+        userRole.setRoleName(normalizedRoleName);
+        this.userRoleRepository.persistOrUpdate(userRole);
+        log.info("User role updated with ID: {}", userRole.getUserRoleId());
+
+        return userRole;
+    }
+
+    public void deleteUserRole(String userRoleId) {
+        UserRole userRole = this.userRoleRepository.findUserRoleById(userRoleId);
+        this.userRoleRepository.delete(userRole);
+        log.info("User role deleted with ID: {}", userRoleId);
     }
 
     public List<String> resolveRoleIdsByAppIdAndRoleNames(String appId, List<String> roleNames) {
