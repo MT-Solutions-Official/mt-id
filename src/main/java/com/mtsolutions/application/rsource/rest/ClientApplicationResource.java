@@ -2,11 +2,13 @@ package com.mtsolutions.application.rsource.rest;
 
 import com.mtsolutions.application.rsource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ClientApplicationController;
+import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.ClientApplicationResponseDto;
 import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
@@ -58,6 +60,35 @@ public class ClientApplicationResource {
     public Response create(CreateClientApplicationRequestDto request) {
         ClientApplication application = this.applicationController.createClientApplication(request);
 
-        return Response.status(Response.Status.CREATED).entity(new ClientApplicationResponseDto(application)).build();
+        return Response.status(Response.Status.CREATED)
+                .entity(new ClientApplicationResponseDto(application))
+                .build();
+    }
+
+    @PATCH
+    @Path("/add-owner")
+    @PermitAll
+    @Operation(
+            summary = "Add owners to a client application",
+            description = "Adds owners to a client application with the provided details."
+    )
+    @RequestBody(
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Add Owners to Client Application",
+                            value = ClientApplicationExamples.ADD_OWNERS_TO_CLIENT_APPLICATION)
+            )
+
+    )
+    @APIResponse(
+            responseCode = "204",
+            description = "Owners added to client application successfully"
+    )
+    public Response addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
+        this.applicationController.addOwnersToClientApplication(request);
+
+        return Response.status(Response.Status.NO_CONTENT)
+                .build();
     }
 }

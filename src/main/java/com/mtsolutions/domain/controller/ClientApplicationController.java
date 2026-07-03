@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.controller;
 
+import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.service.ClientApplicationService;
@@ -16,5 +17,9 @@ public class ClientApplicationController {
 
     public ClientApplication createClientApplication(CreateClientApplicationRequestDto request) {
         return this.clientApplicationService.createClientApplication(request);
+    }
+
+    public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
+        this.clientApplicationService.addOwnersToClientApplication(request);
     }
 }

@@ -1,8 +1,11 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.exception.ApplicationOwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
+import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -13,12 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 public class ClientApplicationService {
 
     private final ClientApplicationRepository clientApplicationRepository;
+    private final ApplicationOwnerService applicationOwnerService;
     private final KeyGeneratorUtils keyGeneratorUtils;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
 
-    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository, KeyGeneratorUtils keyGeneratorUtils, BcryptService bcryptService, DateUtils dateUtils) {
+    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository, ApplicationOwnerService applicationOwnerService, KeyGeneratorUtils keyGeneratorUtils, BcryptService bcryptService, DateUtils dateUtils) {
         this.clientApplicationRepository = clientApplicationRepository;
+        this.applicationOwnerService = applicationOwnerService;
         this.keyGeneratorUtils = keyGeneratorUtils;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
@@ -48,5 +53,28 @@ public class ClientApplicationService {
         log.info("Client application created with ID: {}", clientApplication.getAppId());
 
         return clientApplication;
+    }
+
+    public ClientApplication findClientApplicationById(String appId) {
+        return this.clientApplicationRepository.findClientApplicationById(appId);
+    }
+
+    public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
+        ClientApplication clientApplication = this.findClientApplicationById(request.appId());
+
+        for (String ownerId : request.ownerIds()) {
+            if (Boolean.FALSE.equals(this.applicationOwnerService.existsApplicationOwnerById(ownerId))) {
+                throw new ApplicationOwnerNotFoundException();
+            }
+            ApplicationOwner owner = this.applicationOwnerService.findApplicationOwnerById(ownerId);
+            
+            if (clientApplication.getOwners().stream().noneMatch(o -> o.getOwnerId().equals(owner.getOwnerId()))) {
+                clientApplication.getOwners().add(owner);
+            }
+        }
+
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+
+        log.info("Owners added to client application with ID: {}", clientApplication.getAppId());
     }
 }

@@ -10,6 +10,8 @@ import java.util.List;
 public record CreateClientApplicationRequestDto (
         @NotBlank(message = "Name is required")
         String name,
+        @NotBlank(message = "Owner ID is required")
+        String ownerId,
         String description,
         @NotNull(message = "JWT expiration time is required")
         @Positive(message = "JWT expiration time must be a positive integer")
