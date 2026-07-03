@@ -2,6 +2,7 @@ package com.mtsolutions.domain.controller;
 
 import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.service.ClientApplicationService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,5 +22,9 @@ public class ClientApplicationController {
 
     public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
         this.clientApplicationService.addOwnersToClientApplication(request);
+    }
+
+    public void updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {
+        this.clientApplicationService.updateRequiredUserFields(request);
     }
 }

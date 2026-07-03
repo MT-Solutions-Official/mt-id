@@ -9,7 +9,8 @@ public class ClientApplicationExamples {
                 "description": "This is an example client application.",
                 "jwtExpirationInMinutes": 60,
                 "refreshTokenExpirationInDays": 30,
-                "allowedOrigins": ["https://example.com", "https://another-example.com"]
+                "allowedOrigins": ["https://example.com", "https://another-example.com"],
+                "requiredUserFields": ["NAME", "EMAIL", "PASSWORD"]
             }
             """;
 
@@ -23,6 +24,7 @@ public class ClientApplicationExamples {
                 "jwtExpirationInMinutes": 60,
                 "refreshTokenExpirationInDays": 30,
                 "allowedOrigins": ["https://example.com", "https://another-example.com"],
+                "requiredUserFields": ["NAME", "EMAIL", "PASSWORD"],
                 "createdAt": "2024-06-01T12:00:00Z",
                 "updatedAt": "2024-06-01T12:00:00Z",
                 "active": true
@@ -33,6 +35,13 @@ public class ClientApplicationExamples {
             {
                 "appId": "507f1f77bcf86cd799439011",
                 "ownerIds": ["507f1f77bcf86cd799439012", "507f1f77bcf86cd799439013"]
+            }
+            """;
+
+    public static final String UPDATE_REQUIRED_USER_FIELDS = """
+            {
+                "appId": "507f1f77bcf86cd799439011",
+                "requiredUserFields": ["NAME", "EMAIL", "PASSWORD", "PHONE"]
             }
             """;
 }

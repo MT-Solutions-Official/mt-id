@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.dto;
 
+import com.mtsolutions.domain.constant.UserRequiredField;
 import com.mtsolutions.domain.entity.ClientApplication;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,7 @@ public record ClientApplicationResponseDto (
         Integer jwtExpirationInMinutes,
         Integer refreshTokenExpirationInDays,
         List<String> allowedOrigins,
+        List<UserRequiredField> requiredUserFields,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         Boolean active
@@ -29,6 +31,7 @@ public record ClientApplicationResponseDto (
                 clientApplication.getJwtExpirationInMinutes(),
                 clientApplication.getRefreshTokenExpirationInDays(),
                 clientApplication.getAllowedOrigins(),
+                clientApplication.getRequiredUserFields(),
                 clientApplication.getCreatedAt(),
                 clientApplication.getUpdatedAt(),
                 clientApplication.getActive()

@@ -5,11 +5,14 @@ import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
 import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
 
 @ApplicationScoped
 @Slf4j
@@ -44,6 +47,7 @@ public class ClientApplicationService {
                 .jwtExpirationInMinutes(request.jwtExpirationInMinutes())
                 .refreshTokenExpirationInDays(request.refreshTokenExpirationInDays())
                 .allowedOrigins(request.allowedOrigins())
+                .requiredUserFields(request.requiredUserFields() != null ? request.requiredUserFields() : new ArrayList<>())
                 .createdAt(this.dateUtils.now())
                 .updatedAt(this.dateUtils.now())
                 .active(true)
@@ -61,6 +65,9 @@ public class ClientApplicationService {
 
     public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
+        if (clientApplication.getOwners() == null) {
+            clientApplication.setOwners(new ArrayList<>());
+        }
 
         for (String ownerId : request.ownerIds()) {
             if (Boolean.FALSE.equals(this.applicationOwnerService.existsApplicationOwnerById(ownerId))) {
@@ -76,5 +83,14 @@ public class ClientApplicationService {
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
 
         log.info("Owners added to client application with ID: {}", clientApplication.getAppId());
+    }
+
+    public void updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {
+        ClientApplication clientApplication = this.findClientApplicationById(request.appId());
+        clientApplication.setRequiredUserFields(request.requiredUserFields() != null ? request.requiredUserFields() : new ArrayList<>());
+        clientApplication.setUpdatedAt(this.dateUtils.now());
+
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+        log.info("Required user fields updated for client application with ID: {}", clientApplication.getAppId());
     }
 }

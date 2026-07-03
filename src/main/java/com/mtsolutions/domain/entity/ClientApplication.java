@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.entity;
 
+import com.mtsolutions.domain.constant.UserRequiredField;
 import io.quarkus.mongodb.panache.common.MongoEntity;
 import lombok.*;
 import org.bson.BsonType;
@@ -21,6 +22,7 @@ public class ClientApplication {
     @BsonRepresentation(BsonType.OBJECT_ID)
     private String appId;
 
+    @Builder.Default
     private List<ApplicationOwner> owners = new ArrayList<>();
     private String name;
     private String description;
@@ -32,6 +34,8 @@ public class ClientApplication {
     private Integer refreshTokenExpirationInDays;
 
     private List<String> allowedOrigins;
+    @Builder.Default
+    private List<UserRequiredField> requiredUserFields = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

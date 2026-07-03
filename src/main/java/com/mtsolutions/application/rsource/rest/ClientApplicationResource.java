@@ -5,6 +5,7 @@ import com.mtsolutions.domain.controller.ClientApplicationController;
 import com.mtsolutions.domain.dto.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.ClientApplicationResponseDto;
 import com.mtsolutions.domain.dto.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
@@ -87,6 +88,33 @@ public class ClientApplicationResource {
     )
     public Response addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
         this.applicationController.addOwnersToClientApplication(request);
+
+        return Response.status(Response.Status.NO_CONTENT)
+                .build();
+    }
+
+    @PATCH
+    @Path("/required-user-fields")
+    @PermitAll
+    @Operation(
+            summary = "Update required user fields for a client application",
+            description = "Defines which user fields must be present when creating users for the given client application."
+    )
+    @RequestBody(
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Update required user fields",
+                            value = ClientApplicationExamples.UPDATE_REQUIRED_USER_FIELDS)
+            )
+
+    )
+    @APIResponse(
+            responseCode = "204",
+            description = "Required user fields updated successfully"
+    )
+    public Response updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {
+        this.applicationController.updateRequiredUserFields(request);
 
         return Response.status(Response.Status.NO_CONTENT)
                 .build();

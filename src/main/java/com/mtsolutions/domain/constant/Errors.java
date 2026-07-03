@@ -6,7 +6,10 @@ import lombok.Getter;
 public enum Errors {
 
     APPLICATION_OWNER_NOT_FOUND("Application owner not found"),
-    CLIENT_APPLICATION_NOT_FOUND("Client application not found");
+    CLIENT_APPLICATION_NOT_FOUND("Client application not found"),
+    REQUIRED_USER_FIELD_MISSING("Required user field is missing"),
+    USER_ROLE_ALREADY_EXISTS("User role already exists"),
+    USER_ROLE_NOT_FOUND("User role not found");
 
     private final String displayName;
 

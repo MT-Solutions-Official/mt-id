@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.dto;
 
+import com.mtsolutions.domain.constant.UserRequiredField;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -20,6 +21,7 @@ public record CreateClientApplicationRequestDto (
         @Positive(message = "Refresh token expiration time must be a positive integer")
         Integer refreshTokenExpirationInDays,
         @NotEmpty(message = "Allowed origins list cannot be empty")
-        List<String> allowedOrigins
+        List<String> allowedOrigins,
+        List<UserRequiredField> requiredUserFields
 ) {
 }

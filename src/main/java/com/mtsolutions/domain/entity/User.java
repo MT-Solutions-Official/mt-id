@@ -9,6 +9,7 @@ import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonRepresentation;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @MongoEntity(collection = "users")
@@ -23,14 +24,15 @@ public class User {
     private String userId;
     private String appId;
     private String name;
-    private List<Email> emails;
+    private String username;
+    private List<Email> emails = new ArrayList<>();
     private Password password;
-    private List<Phone> phones;
+    private List<Phone> phones = new ArrayList<>();
     private Document document;
     private MaritalStatus maritalStatus;
-    private List<UserImage> images;
-    private List<Address> addresses;
-    private List<String> roleIds;
+    private List<UserImage> images = new ArrayList<>();
+    private List<Address> addresses = new ArrayList<>();
+    private List<String> roleIds = new ArrayList<>();
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime disabledAt;

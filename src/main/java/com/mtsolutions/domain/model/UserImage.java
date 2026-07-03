@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mtsolutions.domain.constant.ImageType;
 import lombok.*;
 
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Getter @Setter
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserImage {
 
     private String imageUrl;       // A URL do S3, Cloud Storage, etc.

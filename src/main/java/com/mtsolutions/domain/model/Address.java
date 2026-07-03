@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mtsolutions.domain.constant.Country;
 import lombok.*;
 
@@ -7,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 @Getter @Setter
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Address {
 
     private Country country;
