@@ -7,7 +7,9 @@ import com.mtsolutions.domain.controller.UserRoleController;
 import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateUserRoleRequestDto;
 import com.mtsolutions.domain.entity.UserRole;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
@@ -23,7 +25,6 @@ import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import io.quarkus.security.Authenticated;
 
 import java.util.List;
 
@@ -41,8 +42,8 @@ public class UserRoleResource {
     }
 
     @POST
-    @Path("/create")
-    @Authenticated
+    @Path("/app/{appId}/create")
+    @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Create a new user role",
             description = "Creates a new role for a specific client application."
@@ -66,8 +67,9 @@ public class UserRoleResource {
                             value = UserRoleExamples.USER_ROLE_CREATED)
             )
     )
-    public Response create(CreateUserRoleRequestDto request) {
-        UserRole userRole = this.userRoleController.createUserRole(request, this.getAuthenticatedAppId());
+    public Response create(@PathParam(RequestParams.APP_ID) String appId,
+                           @Valid CreateUserRoleRequestDto request) {
+        UserRole userRole = this.userRoleController.createUserRole(request, appId, this.getAuthenticatedOwnerId());
 
         return Response.status(Response.Status.CREATED)
                 .entity(userRole)
@@ -76,7 +78,7 @@ public class UserRoleResource {
 
     @GET
     @Path("/{userRoleId}")
-    @Authenticated
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Find user role by ID",
             description = "Finds a user role by ID."
@@ -92,7 +94,7 @@ public class UserRoleResource {
             )
     )
     public Response findById(@PathParam(RequestParams.USER_ROLE_ID) String userRoleId) {
-        UserRole userRole = this.userRoleController.findUserRoleById(userRoleId, this.getAuthenticatedAppId());
+        UserRole userRole = this.userRoleController.findUserRoleById(userRoleId, this.getAuthenticatedOwnerId());
 
         return Response.status(Response.Status.OK)
                 .entity(userRole)
@@ -101,7 +103,7 @@ public class UserRoleResource {
 
     @GET
     @Path("/app/{appId}")
-    @Authenticated
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Find user roles by application",
             description = "Finds all user roles for a specific application."
@@ -117,7 +119,7 @@ public class UserRoleResource {
             )
     )
     public Response findByAppId(@PathParam(RequestParams.APP_ID) String appId) {
-        List<UserRole> userRoles = this.userRoleController.findUserRolesByAppId(appId, this.getAuthenticatedAppId());
+        List<UserRole> userRoles = this.userRoleController.findUserRolesByAppId(appId, this.getAuthenticatedOwnerId());
 
         return Response.status(Response.Status.OK)
                 .entity(userRoles)
@@ -125,8 +127,8 @@ public class UserRoleResource {
     }
 
     @PATCH
-    @Path("/update")
-    @Authenticated
+    @Path("/app/{appId}/update")
+    @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Update user role",
             description = "Updates a user role name."
@@ -150,8 +152,9 @@ public class UserRoleResource {
                             value = UserRoleExamples.USER_ROLE_UPDATED)
             )
     )
-    public Response update(UpdateUserRoleRequestDto request) {
-        UserRole userRole = this.userRoleController.updateUserRole(request, this.getAuthenticatedAppId());
+    public Response update(@PathParam(RequestParams.APP_ID) String appId,
+                           @Valid UpdateUserRoleRequestDto request) {
+        UserRole userRole = this.userRoleController.updateUserRole(request, appId, this.getAuthenticatedOwnerId());
 
         return Response.status(Response.Status.OK)
                 .entity(userRole)
@@ -160,7 +163,7 @@ public class UserRoleResource {
 
     @DELETE
     @Path("/{userRoleId}")
-    @Authenticated
+    @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Delete user role",
             description = "Deletes a user role by ID."
@@ -170,18 +173,18 @@ public class UserRoleResource {
             description = "User role deleted successfully"
     )
     public Response delete(@PathParam(RequestParams.USER_ROLE_ID) String userRoleId) {
-        this.userRoleController.deleteUserRole(userRoleId, this.getAuthenticatedAppId());
+        this.userRoleController.deleteUserRole(userRoleId, this.getAuthenticatedOwnerId());
 
         return Response.status(Response.Status.NO_CONTENT)
                 .build();
     }
 
-    private String getAuthenticatedAppId() {
-        String appId = this.jwt.getClaim("app_id");
-        if (appId == null || appId.isBlank()) {
+    private String getAuthenticatedOwnerId() {
+        String ownerId = this.jwt.getClaim("ownerId");
+        if (ownerId == null || ownerId.isBlank()) {
             throw new ApplicationForbiddenException();
         }
 
-        return appId;
+        return ownerId;
     }
 }

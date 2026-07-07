@@ -5,7 +5,7 @@ public class RequestParams {
     public static final String API_KEY = "apiKey";
     public static final String API_TOKEN = "apiToken";
     public static final String OWNER_EMAIL = "ownerEmail";
-    public static final String OWNER_ROLE_ID = "ownerRoleId";
+    public static final String USER_ID = "userId";
     public static final String USER_ROLE_ID = "userRoleId";
     public static final String APP_ID = "appId";
     public static final String ZIP_CODE = "zipCode";

@@ -2,10 +2,10 @@ package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.exception.ApplicationOwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
+import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.request.CreateApplicationOwnerRequestDto;
 import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
-import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;
@@ -56,6 +56,7 @@ public class ApplicationOwnerService {
                 .email(email)
                 .phone(phone)
                 .password(password)
+                .role(OwnerRole.OWNER_WRITER)
                 .createdAt(this.dateUtils.now())
                 .updatedAt(this.dateUtils.now())
                 .active(true)

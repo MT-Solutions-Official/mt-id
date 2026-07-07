@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.entity;
 
+import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;

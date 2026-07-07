@@ -5,6 +5,7 @@ import com.mtsolutions.application.exception.UserRoleNotFoundException;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateUserRoleRequestDto;
+import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.UserRole;
 import com.mtsolutions.domain.repository.UserRoleRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,16 +30,16 @@ public class UserRoleService {
         this.clientApplicationService = clientApplicationService;
     }
 
-    public UserRole createUserRole(CreateUserRoleRequestDto request, String authenticatedAppId) {
-        this.clientApplicationService.findClientApplicationById(authenticatedAppId);
+    public UserRole createUserRole(CreateUserRoleRequestDto request, String appId, String authenticatedOwnerId) {
+        this.validateOwnerAccessToApp(appId, authenticatedOwnerId);
         String normalizedRoleName = this.normalizeRoleName(request.roleName());
 
-        if (this.userRoleRepository.existsByAppIdAndRoleName(authenticatedAppId, normalizedRoleName)) {
+        if (this.userRoleRepository.existsByAppIdAndRoleName(appId, normalizedRoleName)) {
             throw new UserRoleAlreadyExistsException(normalizedRoleName);
         }
 
         UserRole userRole = UserRole.builder()
-                .appId(authenticatedAppId)
+                .appId(appId)
                 .roleName(normalizedRoleName)
                 .build();
 
@@ -48,27 +49,27 @@ public class UserRoleService {
         return userRole;
     }
 
-    public UserRole findUserRoleById(String userRoleId, String authenticatedAppId) {
+    public UserRole findUserRoleById(String userRoleId, String authenticatedOwnerId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(userRoleId);
-        this.validateRoleOwnership(userRole, authenticatedAppId);
+        this.validateOwnerAccessToApp(userRole.getAppId(), authenticatedOwnerId);
 
         return userRole;
     }
 
-    public List<UserRole> findUserRolesByAppId(String appId, String authenticatedAppId) {
-        if (!authenticatedAppId.equals(appId)) {
-            throw new ApplicationForbiddenException();
-        }
-        this.clientApplicationService.findClientApplicationById(authenticatedAppId);
-        return this.userRoleRepository.findByAppId(authenticatedAppId);
+    public List<UserRole> findUserRolesByAppId(String appId, String authenticatedOwnerId) {
+        this.validateOwnerAccessToApp(appId, authenticatedOwnerId);
+        return this.userRoleRepository.findByAppId(appId);
     }
 
-    public UserRole updateUserRole(UpdateUserRoleRequestDto request, String authenticatedAppId) {
+    public UserRole updateUserRole(UpdateUserRoleRequestDto request, String appId, String authenticatedOwnerId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(request.userRoleId());
-        this.validateRoleOwnership(userRole, authenticatedAppId);
+        this.validateOwnerAccessToApp(appId, authenticatedOwnerId);
+        if (!appId.equals(userRole.getAppId())) {
+            throw new ApplicationForbiddenException();
+        }
         String normalizedRoleName = this.normalizeRoleName(request.roleName());
 
-        this.userRoleRepository.findByAppIdAndRoleName(userRole.getAppId(), normalizedRoleName)
+        this.userRoleRepository.findByAppIdAndRoleName(appId, normalizedRoleName)
                 .filter(existingRole -> !existingRole.getUserRoleId().equals(userRole.getUserRoleId()))
                 .ifPresent(existingRole -> {
                     throw new UserRoleAlreadyExistsException(normalizedRoleName);
@@ -81,9 +82,9 @@ public class UserRoleService {
         return userRole;
     }
 
-    public void deleteUserRole(String userRoleId, String authenticatedAppId) {
+    public void deleteUserRole(String userRoleId, String authenticatedOwnerId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(userRoleId);
-        this.validateRoleOwnership(userRole, authenticatedAppId);
+        this.validateOwnerAccessToApp(userRole.getAppId(), authenticatedOwnerId);
         this.userRoleRepository.delete(userRole);
         log.info("User role deleted with ID: {}", userRoleId);
     }
@@ -122,8 +123,12 @@ public class UserRoleService {
         return roleName.trim().toUpperCase(Locale.ROOT);
     }
 
-    private void validateRoleOwnership(UserRole userRole, String authenticatedAppId) {
-        if (!authenticatedAppId.equals(userRole.getAppId())) {
+    private void validateOwnerAccessToApp(String appId, String authenticatedOwnerId) {
+        ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(appId);
+        boolean ownsApplication = clientApplication.getOwners() != null && clientApplication.getOwners().stream()
+                .anyMatch(owner -> authenticatedOwnerId.equals(owner.getOwnerId()));
+
+        if (!ownsApplication) {
             throw new ApplicationForbiddenException();
         }
     }

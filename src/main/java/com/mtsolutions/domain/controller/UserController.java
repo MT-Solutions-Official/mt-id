@@ -1,6 +1,7 @@
 package com.mtsolutions.domain.controller;
 
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
+import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.entity.User;
 import com.mtsolutions.domain.service.UserService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,5 +17,9 @@ public class UserController {
 
     public User createUser(CreateUserRequestDto request) {
         return this.userService.createUser(request);
+    }
+
+    public User attachAddressToUser(String userId, CreateAddressRequestDto request) {
+        return this.userService.attachAddressToUser(userId, request);
     }
 }

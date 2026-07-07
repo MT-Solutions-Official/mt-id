@@ -9,6 +9,7 @@ import com.mtsolutions.application.client.zippopotam.ZippopotamClient;
 import com.mtsolutions.application.client.zippopotam.ZippopotamPlaceDto;
 import com.mtsolutions.application.client.zippopotam.ZippopotamResponseDto;
 import com.mtsolutions.application.exception.*;
+import com.mtsolutions.domain.constant.AddressResolutionMode;
 import com.mtsolutions.domain.constant.Country;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.model.Address;
@@ -133,6 +134,17 @@ public class AddressService {
     }
 
     public Address resolveAddress(CreateAddressRequestDto addressRequest) {
+        AddressResolutionMode resolutionMode = addressRequest.mode() != null
+                ? addressRequest.mode()
+                : AddressResolutionMode.AUTO;
+
+        return switch (resolutionMode) {
+            case AUTO -> this.resolveAddressAutomatically(addressRequest);
+            case MANUAL -> this.resolveAddressManually(addressRequest);
+        };
+    }
+
+    private Address resolveAddressAutomatically(CreateAddressRequestDto addressRequest) {
         Country addressCountry = addressRequest.country();
         String zipCode = normalizeZipCode(addressCountry, addressRequest.zipCode());
         String number = requireField("number", addressRequest.number());
@@ -167,6 +179,42 @@ public class AddressService {
 
         resolvedAddress.setCountry(addressCountry);
         return resolvedAddress;
+    }
+
+    private Address resolveAddressManually(CreateAddressRequestDto addressRequest) {
+        Country addressCountry = addressRequest.country();
+        String zipCode = normalizeZipCode(addressCountry, addressRequest.zipCode());
+        String street = requireField("street", addressRequest.street());
+        String number = requireField("number", addressRequest.number());
+        String city = requireField("city", addressRequest.city());
+        String state = requireField("state", addressRequest.state());
+        String complement = trimToNull(addressRequest.complement());
+
+        Address.AddressBuilder addressBuilder = Address.builder()
+                .country(addressCountry)
+                .zipCode(zipCode)
+                .street(street)
+                .number(number)
+                .complement(complement)
+                .city(city)
+                .state(state);
+
+        switch (addressCountry) {
+            case BR -> addressBuilder.neighborhood(requireField("neighborhood", addressRequest.neighborhood()));
+            case ID -> {
+                addressBuilder.rt(requireField("rt", addressRequest.rt()));
+                addressBuilder.rw(requireField("rw", addressRequest.rw()));
+                addressBuilder.kelurahan(requireField("kelurahan", addressRequest.kelurahan()));
+                addressBuilder.kecamatan(requireField("kecamatan", addressRequest.kecamatan()));
+            }
+            case US, PT -> {
+            }
+            default -> throw new BadRequestException(
+                    "Address country '" + addressCountry + "' is not supported for user address creation. Supported countries: BR, US, PT, ID."
+            );
+        }
+
+        return addressBuilder.build();
     }
 
     private String requireField(String fieldName, String value) {

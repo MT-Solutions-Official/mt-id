@@ -1,6 +1,7 @@
 package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
+import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.AppTokenResponseDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.repository.ApplicationOwnerRepository;
@@ -45,9 +46,14 @@ public class JwtService {
             throw new ApplicationAuthenticationFailedException();
         }
 
-        Set<String> groups = owner.getRole() != null && owner.getRole().getRoleName() != null
-                ? Set.of(owner.getRole().getRoleName())
-                : Set.of();
+        OwnerRole ownerRole = owner.getRole();
+        if (ownerRole == null) {
+            ownerRole = OwnerRole.OWNER_VIEWER;
+            owner.setRole(ownerRole);
+            this.applicationOwnerRepository.persistOrUpdate(owner);
+        }
+
+        Set<String> groups = Set.of(ownerRole.name());
 
         String accessToken = Jwt.issuer(jwtIssuer)
                 .subject(owner.getOwnerId())

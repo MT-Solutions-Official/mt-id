@@ -2,11 +2,13 @@ package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.exception.RequiredUserFieldMissingException;
 import com.mtsolutions.application.utils.DateUtils;
+import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.constant.UserRequiredField;
 import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.User;
+import com.mtsolutions.domain.model.Address;
 import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;
@@ -27,13 +29,15 @@ public class UserService {
     private final UserRepository userRepository;
     private final ClientApplicationService clientApplicationService;
     private final UserRoleService userRoleService;
+    private final AddressService addressService;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
 
-    public UserService(UserRepository userRepository, ClientApplicationService clientApplicationService, UserRoleService userRoleService, BcryptService bcryptService, DateUtils dateUtils) {
+    public UserService(UserRepository userRepository, ClientApplicationService clientApplicationService, UserRoleService userRoleService, AddressService addressService, BcryptService bcryptService, DateUtils dateUtils) {
         this.userRepository = userRepository;
         this.clientApplicationService = clientApplicationService;
         this.userRoleService = userRoleService;
+        this.addressService = addressService;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
     }
@@ -61,6 +65,22 @@ public class UserService {
 
         this.userRepository.persist(user);
         log.info("User created with ID: {}", user.getUserId());
+
+        return user;
+    }
+
+    public User attachAddressToUser(String userId, CreateAddressRequestDto request) {
+        User user = this.userRepository.findUserById(userId);
+        Address resolvedAddress = this.addressService.resolveAddress(request);
+
+        if (user.getAddresses() == null) {
+            user.setAddresses(new ArrayList<>());
+        }
+
+        user.getAddresses().add(resolvedAddress);
+        user.setUpdatedAt(this.dateUtils.now());
+        this.userRepository.persistOrUpdate(user);
+        log.info("Address attached to user with ID: {}", userId);
 
         return user;
     }

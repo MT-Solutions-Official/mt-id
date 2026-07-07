@@ -17,8 +17,8 @@ public class UserRoleController {
         this.userRoleService = userRoleService;
     }
 
-    public UserRole createUserRole(CreateUserRoleRequestDto request, String authenticatedAppId) {
-        return this.userRoleService.createUserRole(request, authenticatedAppId);
+    public UserRole createUserRole(CreateUserRoleRequestDto request, String appId, String authenticatedOwnerId) {
+        return this.userRoleService.createUserRole(request, appId, authenticatedOwnerId);
     }
 
     public UserRole findUserRoleById(String userRoleId, String authenticatedAppId) {
@@ -29,8 +29,8 @@ public class UserRoleController {
         return this.userRoleService.findUserRolesByAppId(appId, authenticatedAppId);
     }
 
-    public UserRole updateUserRole(UpdateUserRoleRequestDto request, String authenticatedAppId) {
-        return this.userRoleService.updateUserRole(request, authenticatedAppId);
+    public UserRole updateUserRole(UpdateUserRoleRequestDto request, String appId, String authenticatedOwnerId) {
+        return this.userRoleService.updateUserRole(request, appId, authenticatedOwnerId);
     }
 
     public void deleteUserRole(String userRoleId, String authenticatedAppId) {
