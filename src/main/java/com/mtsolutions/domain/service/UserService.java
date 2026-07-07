@@ -15,6 +15,7 @@ import com.mtsolutions.domain.model.Password;
 import com.mtsolutions.domain.model.Phone;
 import com.mtsolutions.domain.repository.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -85,10 +86,22 @@ public class UserService {
         return user;
     }
 
+    public void removeAddressFromUser(String userId, Integer addressIndex) {
+        User user = this.userRepository.findUserById(userId);
+        List<Address> addresses = user.getAddresses();
 
+        if (addresses == null || addresses.isEmpty()) {
+            throw new BadRequestException("User has no addresses to remove.");
+        }
+        if (addressIndex == null || addressIndex < 0 || addressIndex >= addresses.size()) {
+            throw new BadRequestException("Address index is out of range.");
+        }
 
-
-
+        addresses.remove(addressIndex.intValue());
+        user.setUpdatedAt(this.dateUtils.now());
+        this.userRepository.persistOrUpdate(user);
+        log.info("Address at index {} removed from user with ID: {}", addressIndex, userId);
+    }
 
 
     private void validateRequiredFields(CreateUserRequestDto request, List<UserRequiredField> requiredFields) {

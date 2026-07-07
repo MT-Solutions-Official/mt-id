@@ -10,6 +10,7 @@ import com.mtsolutions.domain.entity.User;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.POST;
@@ -118,6 +119,25 @@ public class UserResource {
 
         return Response.status(Response.Status.OK)
                 .entity(new UserResponseDto(user))
+                .build();
+    }
+
+    @DELETE
+    @Path("/{userId}/address/{addressIndex}")
+    @PermitAll
+    @Operation(
+            summary = "Remove address from user",
+            description = "Removes an address from the user's address list by index."
+    )
+    @APIResponse(
+            responseCode = "204",
+            description = "Address removed successfully"
+    )
+    public Response removeAddress(@PathParam(RequestParams.USER_ID) String userId,
+                                  @PathParam(RequestParams.ADDRESS_INDEX) Integer addressIndex) {
+        this.userController.removeAddressFromUser(userId, addressIndex);
+
+        return Response.status(Response.Status.NO_CONTENT)
                 .build();
     }
 }

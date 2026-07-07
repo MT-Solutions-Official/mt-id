@@ -15,6 +15,7 @@ public class RequestParams {
     public static final String RT = "rt";
     public static final String RW = "rw";
     public static final String COMPLEMENT = "complement";
+    public static final String ADDRESS_INDEX = "addressIndex";
 
 
     private RequestParams(){}

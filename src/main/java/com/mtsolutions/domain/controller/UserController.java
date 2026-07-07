@@ -22,4 +22,8 @@ public class UserController {
     public User attachAddressToUser(String userId, CreateAddressRequestDto request) {
         return this.userService.attachAddressToUser(userId, request);
     }
+
+    public void removeAddressFromUser(String userId, Integer addressIndex) {
+        this.userService.removeAddressFromUser(userId, addressIndex);
+    }
 }
