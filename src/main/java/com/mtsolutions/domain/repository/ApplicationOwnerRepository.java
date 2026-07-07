@@ -6,6 +6,8 @@ import io.quarkus.mongodb.panache.PanacheMongoRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.bson.types.ObjectId;
 
+import java.util.Optional;
+
 @ApplicationScoped
 public class ApplicationOwnerRepository implements PanacheMongoRepositoryBase<ApplicationOwner, String> {
 
@@ -20,5 +22,9 @@ public class ApplicationOwnerRepository implements PanacheMongoRepositoryBase<Ap
     public Boolean existsByOwnerId(String ownerId) {
         if (!ObjectId.isValid(ownerId)) return false;
         return find("_id", new ObjectId(ownerId)).firstResultOptional().isPresent();
+    }
+
+    public Optional<ApplicationOwner> findOwnerByEmail(String email) {
+        return find("email.email", email).firstResultOptional();
     }
 }

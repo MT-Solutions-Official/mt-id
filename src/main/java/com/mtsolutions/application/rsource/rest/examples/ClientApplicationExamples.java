@@ -44,4 +44,21 @@ public class ClientApplicationExamples {
                 "requiredUserFields": ["NAME", "EMAIL", "PASSWORD", "PHONE"]
             }
             """;
+
+    public static final String CLIENT_APPLICATION_SECRET_ROTATED = """
+            {
+                "appId": "507f1f77bcf86cd799439011",
+                "name": "Example Client Application",
+                "description": "This is an example client application.",
+                "apiKey": "exampleApiKey123456",
+                "apiSecret": "exampleNewApiSecret123456",
+                "jwtExpirationInMinutes": 60,
+                "refreshTokenExpirationInDays": 30,
+                "allowedOrigins": ["https://example.com", "https://another-example.com"],
+                "requiredUserFields": ["NAME", "EMAIL", "PASSWORD"],
+                "createdAt": "2024-06-01T12:00:00Z",
+                "updatedAt": "2024-06-01T12:30:00Z",
+                "active": true
+            }
+            """;
 }

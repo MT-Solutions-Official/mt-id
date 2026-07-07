@@ -1,14 +1,17 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.exception.ApplicationOwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.domain.dto.request.CreateApplicationOwnerRequestDto;
 import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
+import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;
 import com.mtsolutions.domain.model.Phone;
 import com.mtsolutions.domain.repository.ApplicationOwnerRepository;
+import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,11 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 public class ApplicationOwnerService {
 
     private final ApplicationOwnerRepository applicationOwnerRepository;
+    private final ClientApplicationRepository clientApplicationRepository;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
 
-    public ApplicationOwnerService(ApplicationOwnerRepository applicationOwnerRepository, BcryptService bcryptService, DateUtils dateUtils) {
+    public ApplicationOwnerService(ApplicationOwnerRepository applicationOwnerRepository, ClientApplicationRepository clientApplicationRepository, BcryptService bcryptService, DateUtils dateUtils) {
         this.applicationOwnerRepository = applicationOwnerRepository;
+        this.clientApplicationRepository = clientApplicationRepository;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
     }
@@ -68,6 +73,11 @@ public class ApplicationOwnerService {
 
     public Boolean existsApplicationOwnerById(String ownerId) {
         return this.applicationOwnerRepository.existsByOwnerId(ownerId);
+    }
+
+    public ApplicationOwner findApplicationOwnerByEmail(String email) {
+        return this.applicationOwnerRepository.findOwnerByEmail(email)
+                .orElseThrow(ApplicationOwnerNotFoundException::new);
     }
 
     private Document fillDocumentFields(CreateDocumentRequestDto request) {

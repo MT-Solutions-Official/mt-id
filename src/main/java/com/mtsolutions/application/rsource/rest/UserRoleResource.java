@@ -1,11 +1,12 @@
 package com.mtsolutions.application.rsource.rest;
 
+import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.rsource.rest.examples.UserRoleExamples;
+import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.domain.controller.UserRoleController;
 import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateUserRoleRequestDto;
 import com.mtsolutions.domain.entity.UserRole;
-import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -15,12 +16,14 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import io.quarkus.security.Authenticated;
 
 import java.util.List;
 
@@ -30,14 +33,16 @@ import java.util.List;
 public class UserRoleResource {
 
     private final UserRoleController userRoleController;
+    private final JsonWebToken jwt;
 
-    public UserRoleResource(UserRoleController userRoleController) {
+    public UserRoleResource(UserRoleController userRoleController, JsonWebToken jwt) {
         this.userRoleController = userRoleController;
+        this.jwt = jwt;
     }
 
     @POST
     @Path("/create")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Create a new user role",
             description = "Creates a new role for a specific client application."
@@ -62,7 +67,7 @@ public class UserRoleResource {
             )
     )
     public Response create(CreateUserRoleRequestDto request) {
-        UserRole userRole = this.userRoleController.createUserRole(request);
+        UserRole userRole = this.userRoleController.createUserRole(request, this.getAuthenticatedAppId());
 
         return Response.status(Response.Status.CREATED)
                 .entity(userRole)
@@ -71,7 +76,7 @@ public class UserRoleResource {
 
     @GET
     @Path("/{userRoleId}")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Find user role by ID",
             description = "Finds a user role by ID."
@@ -86,8 +91,8 @@ public class UserRoleResource {
                             value = UserRoleExamples.USER_ROLE_CREATED)
             )
     )
-    public Response findById(@PathParam("userRoleId") String userRoleId) {
-        UserRole userRole = this.userRoleController.findUserRoleById(userRoleId);
+    public Response findById(@PathParam(RequestParams.USER_ROLE_ID) String userRoleId) {
+        UserRole userRole = this.userRoleController.findUserRoleById(userRoleId, this.getAuthenticatedAppId());
 
         return Response.status(Response.Status.OK)
                 .entity(userRole)
@@ -96,7 +101,7 @@ public class UserRoleResource {
 
     @GET
     @Path("/app/{appId}")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Find user roles by application",
             description = "Finds all user roles for a specific application."
@@ -111,8 +116,8 @@ public class UserRoleResource {
                             value = UserRoleExamples.USER_ROLE_LIST)
             )
     )
-    public Response findByAppId(@PathParam("appId") String appId) {
-        List<UserRole> userRoles = this.userRoleController.findUserRolesByAppId(appId);
+    public Response findByAppId(@PathParam(RequestParams.APP_ID) String appId) {
+        List<UserRole> userRoles = this.userRoleController.findUserRolesByAppId(appId, this.getAuthenticatedAppId());
 
         return Response.status(Response.Status.OK)
                 .entity(userRoles)
@@ -121,7 +126,7 @@ public class UserRoleResource {
 
     @PATCH
     @Path("/update")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Update user role",
             description = "Updates a user role name."
@@ -146,7 +151,7 @@ public class UserRoleResource {
             )
     )
     public Response update(UpdateUserRoleRequestDto request) {
-        UserRole userRole = this.userRoleController.updateUserRole(request);
+        UserRole userRole = this.userRoleController.updateUserRole(request, this.getAuthenticatedAppId());
 
         return Response.status(Response.Status.OK)
                 .entity(userRole)
@@ -155,7 +160,7 @@ public class UserRoleResource {
 
     @DELETE
     @Path("/{userRoleId}")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Delete user role",
             description = "Deletes a user role by ID."
@@ -164,10 +169,19 @@ public class UserRoleResource {
             responseCode = "204",
             description = "User role deleted successfully"
     )
-    public Response delete(@PathParam("userRoleId") String userRoleId) {
-        this.userRoleController.deleteUserRole(userRoleId);
+    public Response delete(@PathParam(RequestParams.USER_ROLE_ID) String userRoleId) {
+        this.userRoleController.deleteUserRole(userRoleId, this.getAuthenticatedAppId());
 
         return Response.status(Response.Status.NO_CONTENT)
                 .build();
+    }
+
+    private String getAuthenticatedAppId() {
+        String appId = this.jwt.getClaim("app_id");
+        if (appId == null || appId.isBlank()) {
+            throw new ApplicationForbiddenException();
+        }
+
+        return appId;
     }
 }

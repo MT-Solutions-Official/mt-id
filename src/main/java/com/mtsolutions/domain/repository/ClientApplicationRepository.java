@@ -6,6 +6,8 @@ import io.quarkus.mongodb.panache.PanacheMongoRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.bson.types.ObjectId;
 
+import java.util.Optional;
+
 @ApplicationScoped
 public class ClientApplicationRepository implements PanacheMongoRepositoryBase<ClientApplication, String> {
 
@@ -14,5 +16,9 @@ public class ClientApplicationRepository implements PanacheMongoRepositoryBase<C
 
         return find("_id", new ObjectId(appId)).firstResultOptional()
                 .orElseThrow(ClientApplicationNotFoundException::new);
+    }
+
+    public Optional<ClientApplication> findClientApplicationByApiKey(String apiKey) {
+        return find("apiKey", apiKey).firstResultOptional();
     }
 }

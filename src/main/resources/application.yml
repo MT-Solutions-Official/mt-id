@@ -35,6 +35,19 @@ quarkus:
     info-title: MT ID API Documentation
     info-version: 1.0.0
 
+mp:
+  jwt:
+    verify:
+      publickey:
+        location: publicKey.pem
+      issuer: ${APP_MT_ID_JWT_ISSUER:mt-id}
+
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: privateKey.pem
+
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:}
   api-key: ${CLOUDINARY_API_KEY:}
@@ -44,3 +57,8 @@ app:
   mt:
     id:
       timezone: ${APP_MT_ID_TIMEZONE:America/Sao_Paulo}
+      jwt:
+        issuer: ${APP_MT_ID_JWT_ISSUER:mt-id}
+      token:
+        expiration:
+          hours: ${APP_MT_ID_JWT_TOKEN_EXPIRATION_HOURS:24}

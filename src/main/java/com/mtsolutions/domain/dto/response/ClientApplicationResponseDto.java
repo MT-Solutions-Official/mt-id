@@ -1,11 +1,13 @@
 package com.mtsolutions.domain.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mtsolutions.domain.constant.UserRequiredField;
 import com.mtsolutions.domain.entity.ClientApplication;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ClientApplicationResponseDto (
         String appId,
         String name,
@@ -22,12 +24,16 @@ public record ClientApplicationResponseDto (
 ) {
 
     public ClientApplicationResponseDto(ClientApplication clientApplication) {
+        this(clientApplication, null);
+    }
+
+    public ClientApplicationResponseDto(ClientApplication clientApplication, String apiSecret) {
         this(
                 clientApplication.getAppId(),
                 clientApplication.getName(),
                 clientApplication.getDescription(),
                 clientApplication.getApiKey(),
-                clientApplication.getApiSecret(),
+                apiSecret,
                 clientApplication.getJwtExpirationInMinutes(),
                 clientApplication.getRefreshTokenExpirationInDays(),
                 clientApplication.getAllowedOrigins(),

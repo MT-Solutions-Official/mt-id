@@ -8,11 +8,13 @@ import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.entity.ClientApplication;
+import com.mtsolutions.domain.model.ClientApplicationSecretResult;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @ApplicationScoped
 @Slf4j
@@ -32,14 +34,20 @@ public class ClientApplicationService {
         this.dateUtils = dateUtils;
     }
 
-    public ClientApplication createClientApplication(CreateClientApplicationRequestDto request) {
+    public ClientApplicationSecretResult createClientApplication(CreateClientApplicationRequestDto request) {
         log.info("Creating client application with name: {}", request.name());
 
+        if (Boolean.FALSE.equals(this.applicationOwnerService.existsApplicationOwnerById(request.ownerId()))) {
+            throw new ApplicationOwnerNotFoundException();
+        }
+
+        ApplicationOwner owner = this.applicationOwnerService.findApplicationOwnerById(request.ownerId());
         String apiKey = this.keyGeneratorUtils.generateApiKey();
         String apiSecret = this.keyGeneratorUtils.generateApiSecret();
         String hashedApiSecret = this.bcryptService.encryptPassword(apiSecret);
 
         ClientApplication clientApplication = ClientApplication.builder()
+                .owners(new ArrayList<>(List.of(owner)))
                 .name(request.name())
                 .description(request.description())
                 .apiKey(apiKey)
@@ -56,7 +64,7 @@ public class ClientApplicationService {
         this.clientApplicationRepository.persist(clientApplication);
         log.info("Client application created with ID: {}", clientApplication.getAppId());
 
-        return clientApplication;
+        return new ClientApplicationSecretResult(clientApplication, apiSecret);
     }
 
     public ClientApplication findClientApplicationById(String appId) {
@@ -92,5 +100,18 @@ public class ClientApplicationService {
 
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
         log.info("Required user fields updated for client application with ID: {}", clientApplication.getAppId());
+    }
+
+    public ClientApplicationSecretResult rotateClientApplicationSecret(String appId) {
+        ClientApplication clientApplication = this.findClientApplicationById(appId);
+        String apiSecret = this.keyGeneratorUtils.generateApiSecret();
+        String hashedApiSecret = this.bcryptService.encryptPassword(apiSecret);
+
+        clientApplication.setApiSecret(hashedApiSecret);
+        clientApplication.setUpdatedAt(this.dateUtils.now());
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+
+        log.info("Client application secret rotated for ID: {}", clientApplication.getAppId());
+        return new ClientApplicationSecretResult(clientApplication, apiSecret);
     }
 }

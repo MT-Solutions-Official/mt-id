@@ -4,7 +4,6 @@ public class UserRoleExamples {
 
     public static final String CREATE_USER_ROLE = """
             {
-              "appId": "507f1f77bcf86cd799439011",
               "roleName": "admin"
             }
             """;

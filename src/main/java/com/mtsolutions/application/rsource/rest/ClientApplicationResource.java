@@ -1,12 +1,12 @@
 package com.mtsolutions.application.rsource.rest;
 
+import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.application.rsource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ClientApplicationController;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
-import com.mtsolutions.domain.entity.ClientApplication;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.ws.rs.PATCH;
@@ -14,12 +14,14 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import io.quarkus.security.Authenticated;
 
 @RequestScoped
 @Path("/api/v1/client-applications")
@@ -27,9 +29,11 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class ClientApplicationResource {
 
     private final ClientApplicationController applicationController;
+    private final JsonWebToken jwt;
 
-    public ClientApplicationResource(ClientApplicationController applicationController) {
+    public ClientApplicationResource(ClientApplicationController applicationController, JsonWebToken jwt) {
         this.applicationController = applicationController;
+        this.jwt = jwt;
     }
 
     @POST
@@ -59,10 +63,10 @@ public class ClientApplicationResource {
             )
     )
     public Response create(CreateClientApplicationRequestDto request) {
-        ClientApplication application = this.applicationController.createClientApplication(request);
+        var result = this.applicationController.createClientApplication(request);
 
         return Response.status(Response.Status.CREATED)
-                .entity(new ClientApplicationResponseDto(application))
+                .entity(new ClientApplicationResponseDto(result.clientApplication(), result.apiSecret()))
                 .build();
     }
 
@@ -118,5 +122,40 @@ public class ClientApplicationResource {
 
         return Response.status(Response.Status.NO_CONTENT)
                 .build();
+    }
+
+    @PATCH
+    @Path("/rotate-secret")
+    @Authenticated
+    @Operation(
+            summary = "Rotate API secret",
+            description = "Rotates the authenticated client application's API secret and returns it only once."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "API secret rotated successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Client Application Secret Rotated",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION_SECRET_ROTATED)
+            )
+    )
+    public Response rotateSecret() {
+        String appId = this.getAuthenticatedAppId();
+        var result = this.applicationController.rotateClientApplicationSecret(appId);
+
+        return Response.status(Response.Status.OK)
+                .entity(new ClientApplicationResponseDto(result.clientApplication(), result.apiSecret()))
+                .build();
+    }
+
+    private String getAuthenticatedAppId() {
+        String appId = this.jwt.getClaim("app_id");
+        if (appId == null || appId.isBlank()) {
+            throw new ApplicationForbiddenException();
+        }
+
+        return appId;
     }
 }
