@@ -35,12 +35,46 @@ quarkus:
     info-title: MT ID API Documentation
     info-version: 1.0.0
 
+  rest-client:
+    viacep:
+      url: ${APP_VIACEP_URL:https://viacep.com.br/ws}
+      scope: jakarta.inject.Singleton
+      connect-timeout: 10000
+      read-timeout: 10000
+    kodepos:
+      url: ${APP_KODEPOS_URL:https://kodepos.vercel.app}
+      scope: jakarta.inject.Singleton
+      connect-timeout: 10000
+      read-timeout: 10000
+    zippopotam:
+      url: ${APP_ZIPPOPOTAMUS_URL:http://api.zippopotam.us}
+      scope: jakarta.inject.Singleton
+      connect-timeout: 10000
+      read-timeout: 10000
+
+mp:
+  jwt:
+    verify:
+      publickey:
+        location: publicKey.pem
+      issuer: ${APP_MT_ID_JWT_ISSUER:mt-id}
+
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: privateKey.pem
+
+
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
-  api-key: ${CLOUDINARY_API_KEY:}
-  api-secret: ${CLOUDINARY_API_SECRET:}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:di5cbe8ni}
+  api-key: ${CLOUDINARY_API_KEY:735658489191162}
+  api-secret: ${CLOUDINARY_API_SECRET:GQEvr_ZhAjrhCfrMCP9HUo5WP2M}
 
 app:
   mt:
     id:
       timezone: ${APP_MT_ID_TIMEZONE:America/Sao_Paulo}
+      token:
+        expiration:
+          hours: ${APP_MT_ID_JWT_TOKEN_EXPIRATION_HOURS:24}

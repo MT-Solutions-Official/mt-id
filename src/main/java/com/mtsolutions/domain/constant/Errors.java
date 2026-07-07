@@ -14,7 +14,15 @@ public enum Errors {
     OWNER_ROLE_NOT_FOUND("Owner role not found"),
     USER_ROLE_ALREADY_EXISTS("User role already exists"),
     USER_ROLE_NOT_FOUND("User role not found"),
-    FORBIDDEN("Forbidden");
+    FORBIDDEN("Forbidden"),
+    VIACEP_NOT_FOUND("ViaCEP not found"),
+    VIACEP_INVALID_CEP("ViaCEP invalid CEP"),
+    VIACEP_API_UNAVAILABLE("ViaCEP API unavailable"),
+    KODEPOS_ZIP_NOT_FOUND("KodePos zip not found"),
+    KODEPOS_API_UNAVAILABLE("KodePos API unavailable"),
+    ZIPPOPOTAM_ZIP_NOT_FOUND("Zippopotam zip not found"),
+    ZIPPOPOTAM_API_UNAVAILABLE("Zippopotam API unavailable");
+
 
     private final String displayName;
 
