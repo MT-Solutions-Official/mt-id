@@ -1,6 +1,5 @@
 package com.mtsolutions.application.rsource.rest;
 
-import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.application.rsource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ClientApplicationController;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
@@ -14,7 +13,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
@@ -29,11 +27,9 @@ import io.quarkus.security.Authenticated;
 public class ClientApplicationResource {
 
     private final ClientApplicationController applicationController;
-    private final JsonWebToken jwt;
 
-    public ClientApplicationResource(ClientApplicationController applicationController, JsonWebToken jwt) {
+    public ClientApplicationResource(ClientApplicationController applicationController) {
         this.applicationController = applicationController;
-        this.jwt = jwt;
     }
 
     @POST
@@ -142,20 +138,10 @@ public class ClientApplicationResource {
             )
     )
     public Response rotateSecret() {
-        String appId = this.getAuthenticatedAppId();
-        var result = this.applicationController.rotateClientApplicationSecret(appId);
+        var result = this.applicationController.rotateClientApplicationSecret();
 
         return Response.status(Response.Status.OK)
                 .entity(new ClientApplicationResponseDto(result.clientApplication(), result.apiSecret()))
                 .build();
-    }
-
-    private String getAuthenticatedAppId() {
-        String appId = this.jwt.getClaim("app_id");
-        if (appId == null || appId.isBlank()) {
-            throw new ApplicationForbiddenException();
-        }
-
-        return appId;
     }
 }

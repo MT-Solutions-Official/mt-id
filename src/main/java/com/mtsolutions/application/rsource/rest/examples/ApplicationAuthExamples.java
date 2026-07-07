@@ -16,4 +16,12 @@ public class ApplicationAuthExamples {
               "expiresIn": 86400
             }
             """;
+
+    public static final String APP_TOKEN_RESPONSE = """
+            {
+              "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "tokenType": "Bearer",
+              "expiresIn": 3600
+            }
+            """;
 }

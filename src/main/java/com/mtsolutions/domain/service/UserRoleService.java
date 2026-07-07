@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.exception.UserRoleAlreadyExistsException;
 import com.mtsolutions.application.exception.UserRoleNotFoundException;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
@@ -24,14 +25,16 @@ public class UserRoleService {
 
     private final UserRoleRepository userRoleRepository;
     private final ClientApplicationService clientApplicationService;
+    private final ContextComponent contextComponent;
 
-    public UserRoleService(UserRoleRepository userRoleRepository, ClientApplicationService clientApplicationService) {
+    public UserRoleService(UserRoleRepository userRoleRepository, ClientApplicationService clientApplicationService, ContextComponent contextComponent) {
         this.userRoleRepository = userRoleRepository;
         this.clientApplicationService = clientApplicationService;
+        this.contextComponent = contextComponent;
     }
 
-    public UserRole createUserRole(CreateUserRoleRequestDto request, String appId, String authenticatedOwnerId) {
-        this.validateOwnerAccessToApp(appId, authenticatedOwnerId);
+    public UserRole createUserRole(CreateUserRoleRequestDto request, String appId) {
+        this.validateOwnerAccessToApp(appId);
         String normalizedRoleName = this.normalizeRoleName(request.roleName());
 
         if (this.userRoleRepository.existsByAppIdAndRoleName(appId, normalizedRoleName)) {
@@ -49,21 +52,21 @@ public class UserRoleService {
         return userRole;
     }
 
-    public UserRole findUserRoleById(String userRoleId, String authenticatedOwnerId) {
+    public UserRole findUserRoleById(String userRoleId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(userRoleId);
-        this.validateOwnerAccessToApp(userRole.getAppId(), authenticatedOwnerId);
+        this.validateOwnerAccessToApp(userRole.getAppId());
 
         return userRole;
     }
 
-    public List<UserRole> findUserRolesByAppId(String appId, String authenticatedOwnerId) {
-        this.validateOwnerAccessToApp(appId, authenticatedOwnerId);
+    public List<UserRole> findUserRolesByAppId(String appId) {
+        this.validateOwnerAccessToApp(appId);
         return this.userRoleRepository.findByAppId(appId);
     }
 
-    public UserRole updateUserRole(UpdateUserRoleRequestDto request, String appId, String authenticatedOwnerId) {
+    public UserRole updateUserRole(UpdateUserRoleRequestDto request, String appId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(request.userRoleId());
-        this.validateOwnerAccessToApp(appId, authenticatedOwnerId);
+        this.validateOwnerAccessToApp(appId);
         if (!appId.equals(userRole.getAppId())) {
             throw new ApplicationForbiddenException();
         }
@@ -82,9 +85,9 @@ public class UserRoleService {
         return userRole;
     }
 
-    public void deleteUserRole(String userRoleId, String authenticatedOwnerId) {
+    public void deleteUserRole(String userRoleId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(userRoleId);
-        this.validateOwnerAccessToApp(userRole.getAppId(), authenticatedOwnerId);
+        this.validateOwnerAccessToApp(userRole.getAppId());
         this.userRoleRepository.delete(userRole);
         log.info("User role deleted with ID: {}", userRoleId);
     }
@@ -123,7 +126,8 @@ public class UserRoleService {
         return roleName.trim().toUpperCase(Locale.ROOT);
     }
 
-    private void validateOwnerAccessToApp(String appId, String authenticatedOwnerId) {
+    private void validateOwnerAccessToApp(String appId) {
+        String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
         ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(appId);
         boolean ownsApplication = clientApplication.getOwners() != null && clientApplication.getOwners().stream()
                 .anyMatch(owner -> authenticatedOwnerId.equals(owner.getOwnerId()));

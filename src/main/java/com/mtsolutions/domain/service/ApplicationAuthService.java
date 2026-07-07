@@ -15,4 +15,8 @@ public class ApplicationAuthService {
     public AppTokenResponseDto generateOwnerToken(String email, String password) {
         return this.jwtService.generateOwnerToken(email, password);
     }
+
+    public AppTokenResponseDto generateApplicationToken(String apiKey, String apiSecret) {
+        return this.jwtService.generateApplicationToken(apiKey, apiSecret);
+    }
 }

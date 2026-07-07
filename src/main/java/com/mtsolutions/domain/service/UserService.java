@@ -1,6 +1,8 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.exception.RequiredUserFieldMissingException;
+import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.constant.UserRequiredField;
@@ -33,18 +35,21 @@ public class UserService {
     private final AddressService addressService;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
+    private final ContextComponent contextComponent;
 
-    public UserService(UserRepository userRepository, ClientApplicationService clientApplicationService, UserRoleService userRoleService, AddressService addressService, BcryptService bcryptService, DateUtils dateUtils) {
+    public UserService(UserRepository userRepository, ClientApplicationService clientApplicationService, UserRoleService userRoleService, AddressService addressService, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
         this.userRepository = userRepository;
         this.clientApplicationService = clientApplicationService;
         this.userRoleService = userRoleService;
         this.addressService = addressService;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
+        this.contextComponent = contextComponent;
     }
 
     public User createUser(CreateUserRequestDto request) {
         log.info("Creating user with username: {}", request.username());
+        this.validateAppAccess(request.appId());
 
         ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(request.appId());
         this.validateRequiredFields(request, clientApplication.getRequiredUserFields());
@@ -72,6 +77,7 @@ public class UserService {
 
     public User attachAddressToUser(String userId, CreateAddressRequestDto request) {
         User user = this.userRepository.findUserById(userId);
+        this.validateAppAccess(user.getAppId());
         Address resolvedAddress = this.addressService.resolveAddress(request);
 
         if (user.getAddresses() == null) {
@@ -88,6 +94,7 @@ public class UserService {
 
     public void removeAddressFromUser(String userId, Integer addressIndex) {
         User user = this.userRepository.findUserById(userId);
+        this.validateAppAccess(user.getAppId());
         List<Address> addresses = user.getAddresses();
 
         if (addresses == null || addresses.isEmpty()) {
@@ -101,6 +108,13 @@ public class UserService {
         user.setUpdatedAt(this.dateUtils.now());
         this.userRepository.persistOrUpdate(user);
         log.info("Address at index {} removed from user with ID: {}", addressIndex, userId);
+    }
+
+    private void validateAppAccess(String userAppId) {
+        String authenticatedAppId = this.contextComponent.getAuthenticatedAppId();
+        if (authenticatedAppId == null || authenticatedAppId.isBlank() || !authenticatedAppId.equals(userAppId)) {
+            throw new ApplicationForbiddenException();
+        }
     }
 
 

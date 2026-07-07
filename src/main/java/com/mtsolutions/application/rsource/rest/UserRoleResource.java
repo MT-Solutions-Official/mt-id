@@ -2,7 +2,6 @@ package com.mtsolutions.application.rsource.rest;
 
 import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.rsource.rest.examples.UserRoleExamples;
-import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.domain.controller.UserRoleController;
 import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateUserRoleRequestDto;
@@ -18,7 +17,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
@@ -34,11 +32,9 @@ import java.util.List;
 public class UserRoleResource {
 
     private final UserRoleController userRoleController;
-    private final JsonWebToken jwt;
 
-    public UserRoleResource(UserRoleController userRoleController, JsonWebToken jwt) {
+    public UserRoleResource(UserRoleController userRoleController) {
         this.userRoleController = userRoleController;
-        this.jwt = jwt;
     }
 
     @POST
@@ -69,7 +65,7 @@ public class UserRoleResource {
     )
     public Response create(@PathParam(RequestParams.APP_ID) String appId,
                            @Valid CreateUserRoleRequestDto request) {
-        UserRole userRole = this.userRoleController.createUserRole(request, appId, this.getAuthenticatedOwnerId());
+        UserRole userRole = this.userRoleController.createUserRole(request, appId);
 
         return Response.status(Response.Status.CREATED)
                 .entity(userRole)
@@ -94,7 +90,7 @@ public class UserRoleResource {
             )
     )
     public Response findById(@PathParam(RequestParams.USER_ROLE_ID) String userRoleId) {
-        UserRole userRole = this.userRoleController.findUserRoleById(userRoleId, this.getAuthenticatedOwnerId());
+        UserRole userRole = this.userRoleController.findUserRoleById(userRoleId);
 
         return Response.status(Response.Status.OK)
                 .entity(userRole)
@@ -119,7 +115,7 @@ public class UserRoleResource {
             )
     )
     public Response findByAppId(@PathParam(RequestParams.APP_ID) String appId) {
-        List<UserRole> userRoles = this.userRoleController.findUserRolesByAppId(appId, this.getAuthenticatedOwnerId());
+        List<UserRole> userRoles = this.userRoleController.findUserRolesByAppId(appId);
 
         return Response.status(Response.Status.OK)
                 .entity(userRoles)
@@ -154,7 +150,7 @@ public class UserRoleResource {
     )
     public Response update(@PathParam(RequestParams.APP_ID) String appId,
                            @Valid UpdateUserRoleRequestDto request) {
-        UserRole userRole = this.userRoleController.updateUserRole(request, appId, this.getAuthenticatedOwnerId());
+        UserRole userRole = this.userRoleController.updateUserRole(request, appId);
 
         return Response.status(Response.Status.OK)
                 .entity(userRole)
@@ -173,18 +169,10 @@ public class UserRoleResource {
             description = "User role deleted successfully"
     )
     public Response delete(@PathParam(RequestParams.USER_ROLE_ID) String userRoleId) {
-        this.userRoleController.deleteUserRole(userRoleId, this.getAuthenticatedOwnerId());
+        this.userRoleController.deleteUserRole(userRoleId);
 
         return Response.status(Response.Status.NO_CONTENT)
                 .build();
     }
 
-    private String getAuthenticatedOwnerId() {
-        String ownerId = this.jwt.getClaim("ownerId");
-        if (ownerId == null || ownerId.isBlank()) {
-            throw new ApplicationForbiddenException();
-        }
-
-        return ownerId;
-    }
 }

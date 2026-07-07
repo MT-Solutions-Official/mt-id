@@ -1,5 +1,6 @@
 package com.mtsolutions.application.common;
 
+import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.application.utils.DateUtils;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -40,12 +41,23 @@ public class ContextComponent {
         return identity.getRoles().stream().findFirst().orElse(null);
     }
 
-    public boolean hasRole(String role) {
-        return identity.hasRole(role);
+
+    public String getAuthenticatedAppId() {
+        String appId = this.jwt.getClaim("app_id");
+        if (appId == null || appId.isBlank()) {
+            throw new ApplicationForbiddenException();
+        }
+
+        return appId;
     }
 
-    public boolean isAnonymous() {
-        return identity.isAnonymous();
+    public String getAuthenticatedOwnerId() {
+        String ownerId = this.jwt.getClaim("ownerId");
+        if (ownerId == null || ownerId.isBlank()) {
+            throw new ApplicationForbiddenException();
+        }
+
+        return ownerId;
     }
 
 }

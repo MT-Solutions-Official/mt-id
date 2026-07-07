@@ -4,7 +4,9 @@ import com.mtsolutions.application.exception.ApplicationAuthenticationFailedExce
 import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.AppTokenResponseDto;
 import com.mtsolutions.domain.entity.ApplicationOwner;
+import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.repository.ApplicationOwnerRepository;
+import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
@@ -21,10 +23,12 @@ public class JwtService {
     @ConfigProperty(name = "app.mt.id.token.expiration.hours") Integer tokenExpirationInHours;
 
     private final ApplicationOwnerRepository applicationOwnerRepository;
+    private final ClientApplicationRepository clientApplicationRepository;
     private final BcryptService bcryptService;
 
-    public JwtService(ApplicationOwnerRepository applicationOwnerRepository, BcryptService bcryptService) {
+    public JwtService(ApplicationOwnerRepository applicationOwnerRepository, ClientApplicationRepository clientApplicationRepository, BcryptService bcryptService) {
         this.applicationOwnerRepository = applicationOwnerRepository;
+        this.clientApplicationRepository = clientApplicationRepository;
         this.bcryptService = bcryptService;
     }
 
@@ -69,6 +73,41 @@ public class JwtService {
                 accessToken,
                 "Bearer",
                 Duration.ofHours(tokenExpirationInHours).getSeconds()
+        );
+    }
+
+    public AppTokenResponseDto generateApplicationToken(String apiKey, String apiSecret) {
+        String normalizedApiKey = apiKey != null ? apiKey.trim() : null;
+        if (normalizedApiKey == null || normalizedApiKey.isBlank()
+                || apiSecret == null || apiSecret.isBlank()) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+
+        ClientApplication clientApplication = this.clientApplicationRepository.findClientApplicationByApiKey(normalizedApiKey)
+                .orElseThrow(ApplicationAuthenticationFailedException::new);
+
+        if (Boolean.FALSE.equals(clientApplication.getActive())
+                || clientApplication.getApiSecret() == null
+                || !this.bcryptService.verifyPassword(apiSecret, clientApplication.getApiSecret())) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+
+        long expirationMinutes = clientApplication.getJwtExpirationInMinutes() != null
+                ? clientApplication.getJwtExpirationInMinutes()
+                : tokenExpirationInHours * 60L;
+
+        String accessToken = Jwt.issuer(jwtIssuer)
+                .subject(clientApplication.getAppId())
+                .claim("app_id", clientApplication.getAppId())
+                .claim("app_name", clientApplication.getName())
+                .groups(Set.of("APPLICATION"))
+                .expiresIn(Duration.ofMinutes(expirationMinutes))
+                .sign();
+
+        return new AppTokenResponseDto(
+                accessToken,
+                "Bearer",
+                Duration.ofMinutes(expirationMinutes).getSeconds()
         );
     }
 }

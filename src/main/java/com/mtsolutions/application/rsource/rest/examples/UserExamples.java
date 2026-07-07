@@ -78,58 +78,53 @@ public class UserExamples {
 
     public static final String ATTACH_ADDRESS_TO_USER_BR = """
             {
-              "mode": "AUTO",
-              "country": "BR",
-              "zipCode": "28994666",
-              "number": "123",
-              "complement": "Apto 1"
-            }
-            """;
-
-    public static final String ATTACH_ADDRESS_TO_USER_ID = """
-            {
-              "mode": "AUTO",
-              "country": "ID",
-              "zipCode": "10110",
-              "street": "Jalan Thamrin",
-              "number": "10",
-              "rt": "001",
-              "rw": "002",
-              "complement": "Blok A"
-            }
-            """;
-
-    public static final String ATTACH_ADDRESS_TO_USER_US = """
-            {
-              "mode": "AUTO",
-              "country": "US",
-              "zipCode": "90210",
-              "street": "N Canon Dr",
-              "number": "200"
-            }
-            """;
-
-    public static final String ATTACH_ADDRESS_TO_USER_PT = """
-            {
-              "mode": "AUTO",
-              "country": "PT",
-              "zipCode": "1000-001",
-              "street": "Rua Augusta",
-              "number": "120"
-            }
-            """;
-
-    public static final String ATTACH_ADDRESS_TO_USER_BR_MANUAL = """
-            {
-              "mode": "MANUAL",
               "country": "BR",
               "zipCode": "28994666",
               "street": "Rua Moacir Picanço",
               "number": "123",
               "complement": "Apto 1",
-              "neighborhood": "Bacaxá (Bacaxá)",
               "city": "Saquarema",
-              "state": "RJ"
+              "state": "RJ",
+              "neighborhood": "Bacaxá (Bacaxá)"
+            }
+            """;
+
+    public static final String ATTACH_ADDRESS_TO_USER_ID = """
+            {
+              "country": "ID",
+              "zipCode": "10110",
+              "street": "Jalan Thamrin",
+              "number": "10",
+              "city": "Jakarta",
+              "state": "DKI Jakarta",
+              "rt": "001",
+              "rw": "002",
+              "complement": "Blok A",
+              "kelurahan": "Gondangdia",
+              "kecamatan": "Menteng"
+            }
+            """;
+
+    public static final String ATTACH_ADDRESS_TO_USER_US = """
+            {
+              "country": "US",
+              "zipCode": "90210",
+              "street": "N Canon Dr",
+              "number": "200",
+              "city": "Beverly Hills",
+              "state": "CA"
+            }
+            """;
+
+    public static final String ATTACH_ADDRESS_TO_USER_PT = """
+            {
+              "country": "PT",
+              "zipCode": "1000-001",
+              "street": "Rua Augusta",
+              "number": "123",
+              "city": "Lisboa",
+              "state": "Lisboa",
+              "neighborhood": "Santa Maria Maior"
             }
             """;
 

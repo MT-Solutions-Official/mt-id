@@ -16,4 +16,8 @@ public class ApplicationAuthController {
     public AppTokenResponseDto generateOwnerToken(String email, String password) {
         return this.applicationAuthService.generateOwnerToken(email, password);
     }
+
+    public AppTokenResponseDto generateApplicationToken(String apiKey, String apiSecret) {
+        return this.applicationAuthService.generateApplicationToken(apiKey, apiSecret);
+    }
 }

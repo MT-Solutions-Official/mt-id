@@ -7,7 +7,6 @@ import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
 import com.mtsolutions.domain.dto.response.UserResponseDto;
 import com.mtsolutions.domain.entity.User;
-import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.DELETE;
@@ -17,6 +16,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import io.quarkus.security.Authenticated;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
@@ -37,7 +37,7 @@ public class UserResource {
 
     @POST
     @Path("/create")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Create a new user",
             description = "Creates a new user with the provided details."
@@ -71,10 +71,10 @@ public class UserResource {
 
     @PATCH
     @Path("/{userId}/address")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Attach address to user",
-            description = "Appends an address to the user. Use mode AUTO to resolve by external API, or MANUAL to provide all required fields."
+            description = "Appends an address to the user. Common fields are required and country-specific fields are optional."
     )
     @RequestBody(
             content = @Content(
@@ -95,10 +95,6 @@ public class UserResource {
                             @ExampleObject(
                                     name = "Attach Address To User PT",
                                     value = UserExamples.ATTACH_ADDRESS_TO_USER_PT
-                            ),
-                            @ExampleObject(
-                                    name = "Attach Address To User BR Manual",
-                                    value = UserExamples.ATTACH_ADDRESS_TO_USER_BR_MANUAL
                             )
                     }
             )
@@ -124,7 +120,7 @@ public class UserResource {
 
     @DELETE
     @Path("/{userId}/address/{addressIndex}")
-    @PermitAll
+    @Authenticated
     @Operation(
             summary = "Remove address from user",
             description = "Removes an address from the user's address list by index."

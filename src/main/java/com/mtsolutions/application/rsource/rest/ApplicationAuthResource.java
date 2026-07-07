@@ -1,11 +1,13 @@
 package com.mtsolutions.application.rsource.rest;
 
+import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.rsource.rest.examples.ApplicationAuthExamples;
 import com.mtsolutions.domain.controller.ApplicationAuthController;
 import com.mtsolutions.domain.dto.request.GenerateOwnerTokenRequestDto;
 import com.mtsolutions.domain.dto.response.AppTokenResponseDto;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
@@ -55,6 +57,32 @@ public class ApplicationAuthResource {
     )
     public Response generateOwnerToken(GenerateOwnerTokenRequestDto request) {
         AppTokenResponseDto response = this.applicationAuthController.generateOwnerToken(request.email(), request.password());
+
+        return Response.status(Response.Status.OK)
+                .entity(response)
+                .build();
+    }
+
+    @POST
+    @Path("/app-token")
+    @PermitAll
+    @Operation(
+            summary = "Generate application token",
+            description = "Authenticates an application using apiKey and apiSecret headers and returns a JWT token."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Application token generated successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Application token response",
+                            value = ApplicationAuthExamples.APP_TOKEN_RESPONSE)
+            )
+    )
+    public Response generateApplicationToken(@HeaderParam(RequestParams.API_KEY) String apiKey,
+                                             @HeaderParam(RequestParams.API_SECRET) String apiSecret) {
+        AppTokenResponseDto response = this.applicationAuthController.generateApplicationToken(apiKey, apiSecret);
 
         return Response.status(Response.Status.OK)
                 .entity(response)

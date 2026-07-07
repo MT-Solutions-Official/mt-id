@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.exception.ApplicationOwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
@@ -25,13 +26,15 @@ public class ClientApplicationService {
     private final KeyGeneratorUtils keyGeneratorUtils;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
+    private final ContextComponent contextComponent;
 
-    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository, ApplicationOwnerService applicationOwnerService, KeyGeneratorUtils keyGeneratorUtils, BcryptService bcryptService, DateUtils dateUtils) {
+    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository, ApplicationOwnerService applicationOwnerService, KeyGeneratorUtils keyGeneratorUtils, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
         this.clientApplicationRepository = clientApplicationRepository;
         this.applicationOwnerService = applicationOwnerService;
         this.keyGeneratorUtils = keyGeneratorUtils;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
+        this.contextComponent = contextComponent;
     }
 
     public ClientApplicationSecretResult createClientApplication(CreateClientApplicationRequestDto request) {
@@ -102,7 +105,8 @@ public class ClientApplicationService {
         log.info("Required user fields updated for client application with ID: {}", clientApplication.getAppId());
     }
 
-    public ClientApplicationSecretResult rotateClientApplicationSecret(String appId) {
+    public ClientApplicationSecretResult rotateClientApplicationSecret() {
+        String appId = this.contextComponent.getAuthenticatedAppId();
         ClientApplication clientApplication = this.findClientApplicationById(appId);
         String apiSecret = this.keyGeneratorUtils.generateApiSecret();
         String hashedApiSecret = this.bcryptService.encryptPassword(apiSecret);

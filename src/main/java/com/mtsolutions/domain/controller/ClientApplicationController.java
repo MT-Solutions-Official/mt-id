@@ -28,7 +28,7 @@ public class ClientApplicationController {
         this.clientApplicationService.updateRequiredUserFields(request);
     }
 
-    public ClientApplicationSecretResult rotateClientApplicationSecret(String appId) {
-        return this.clientApplicationService.rotateClientApplicationSecret(appId);
+    public ClientApplicationSecretResult rotateClientApplicationSecret() {
+        return this.clientApplicationService.rotateClientApplicationSecret();
     }
 }
