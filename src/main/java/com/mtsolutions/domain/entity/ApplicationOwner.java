@@ -27,7 +27,7 @@ public class ApplicationOwner {
     private Phone phone;
     private Document document;
     private Password password;
-    private UserRole role;
+    private OwnerRole role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime disabledAt;

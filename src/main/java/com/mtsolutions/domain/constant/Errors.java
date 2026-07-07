@@ -10,8 +10,11 @@ public enum Errors {
     APPLICATION_AUTHENTICATION_FAILED("Application authentication failed"),
     APPLICATION_FORBIDDEN("Application forbidden"),
     REQUIRED_USER_FIELD_MISSING("Required user field is missing"),
+    OWNER_ROLE_ALREADY_EXISTS("Owner role already exists"),
+    OWNER_ROLE_NOT_FOUND("Owner role not found"),
     USER_ROLE_ALREADY_EXISTS("User role already exists"),
-    USER_ROLE_NOT_FOUND("User role not found");
+    USER_ROLE_NOT_FOUND("User role not found"),
+    FORBIDDEN("Forbidden");
 
     private final String displayName;
 
