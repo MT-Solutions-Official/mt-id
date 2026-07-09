@@ -5,7 +5,7 @@ import lombok.Getter;
 @Getter
 public enum Errors {
 
-    APPLICATION_OWNER_NOT_FOUND("Application owner not found"),
+    OWNER_NOT_FOUND("Owner not found"),
     CLIENT_APPLICATION_NOT_FOUND("Client application not found"),
     APPLICATION_AUTHENTICATION_FAILED("Application authentication failed"),
     APPLICATION_FORBIDDEN("Application forbidden"),

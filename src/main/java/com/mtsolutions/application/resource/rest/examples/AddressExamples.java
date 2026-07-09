@@ -1,4 +1,4 @@
-package com.mtsolutions.application.rsource.rest.examples;
+package com.mtsolutions.application.resource.rest.examples;
 
 public class AddressExamples {
 

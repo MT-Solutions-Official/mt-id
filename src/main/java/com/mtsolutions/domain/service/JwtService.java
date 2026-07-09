@@ -3,10 +3,10 @@ package com.mtsolutions.domain.service;
 import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
 import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.AppTokenResponseDto;
-import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.entity.ClientApplication;
-import com.mtsolutions.domain.repository.ApplicationOwnerRepository;
+import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
+import com.mtsolutions.domain.repository.OwnerRepository;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +22,12 @@ public class JwtService {
     @ConfigProperty(name = "mp.jwt.verify.issuer") String jwtIssuer;
     @ConfigProperty(name = "app.mt.id.token.expiration.hours") Integer tokenExpirationInHours;
 
-    private final ApplicationOwnerRepository applicationOwnerRepository;
+    private final OwnerRepository ownerRepository;
     private final ClientApplicationRepository clientApplicationRepository;
     private final BcryptService bcryptService;
 
-    public JwtService(ApplicationOwnerRepository applicationOwnerRepository, ClientApplicationRepository clientApplicationRepository, BcryptService bcryptService) {
-        this.applicationOwnerRepository = applicationOwnerRepository;
+    public JwtService(OwnerRepository ownerRepository, ClientApplicationRepository clientApplicationRepository, BcryptService bcryptService) {
+        this.ownerRepository = ownerRepository;
         this.clientApplicationRepository = clientApplicationRepository;
         this.bcryptService = bcryptService;
     }
@@ -40,7 +40,7 @@ public class JwtService {
             throw new ApplicationAuthenticationFailedException();
         }
 
-        ApplicationOwner owner = this.applicationOwnerRepository.findOwnerByEmail(normalizedOwnerEmail)
+        Owner owner = this.ownerRepository.findOwnerByEmail(normalizedOwnerEmail)
                 .orElseThrow(ApplicationAuthenticationFailedException::new);
 
         if (Boolean.FALSE.equals(owner.getActive())
@@ -54,7 +54,7 @@ public class JwtService {
         if (ownerRole == null) {
             ownerRole = OwnerRole.OWNER_VIEWER;
             owner.setRole(ownerRole);
-            this.applicationOwnerRepository.persistOrUpdate(owner);
+            this.ownerRepository.persistOrUpdate(owner);
         }
 
         Set<String> groups = Set.of(ownerRole.name());

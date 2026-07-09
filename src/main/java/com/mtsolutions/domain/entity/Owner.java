@@ -13,12 +13,12 @@ import org.bson.codecs.pojo.annotations.BsonRepresentation;
 
 import java.time.LocalDateTime;
 
-@MongoEntity(collection = "application_owners")
+@MongoEntity(collection = "owners")
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @Getter @Setter
-public class ApplicationOwner {
+public class Owner {
 
     @BsonId
     @BsonRepresentation(BsonType.OBJECT_ID)

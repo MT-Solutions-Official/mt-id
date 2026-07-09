@@ -1,7 +1,7 @@
-package com.mtsolutions.application.rsource.rest;
+package com.mtsolutions.application.resource.rest;
 
 import com.mtsolutions.application.common.RequestParams;
-import com.mtsolutions.application.rsource.rest.examples.AddressExamples;
+import com.mtsolutions.application.resource.rest.examples.AddressExamples;
 import com.mtsolutions.domain.controller.AddressController;
 import com.mtsolutions.domain.dto.response.AddressResponseDto;
 import com.mtsolutions.domain.model.Address;

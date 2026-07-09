@@ -1,6 +1,6 @@
-package com.mtsolutions.application.rsource.rest;
+package com.mtsolutions.application.resource.rest;
 
-import com.mtsolutions.application.rsource.rest.examples.ClientApplicationExamples;
+import com.mtsolutions.application.resource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ClientApplicationController;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;

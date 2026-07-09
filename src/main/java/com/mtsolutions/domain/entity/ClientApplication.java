@@ -23,7 +23,7 @@ public class ClientApplication {
     private String appId;
 
     @Builder.Default
-    private List<ApplicationOwner> owners = new ArrayList<>();
+    private List<Owner> owners = new ArrayList<>();
     private String name;
     private String description;
 

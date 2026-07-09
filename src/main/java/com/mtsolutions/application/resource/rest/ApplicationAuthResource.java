@@ -1,7 +1,7 @@
-package com.mtsolutions.application.rsource.rest;
+package com.mtsolutions.application.resource.rest;
 
 import com.mtsolutions.application.common.RequestParams;
-import com.mtsolutions.application.rsource.rest.examples.ApplicationAuthExamples;
+import com.mtsolutions.application.resource.rest.examples.ApplicationAuthExamples;
 import com.mtsolutions.domain.controller.ApplicationAuthController;
 import com.mtsolutions.domain.dto.request.GenerateOwnerTokenRequestDto;
 import com.mtsolutions.domain.dto.response.AppTokenResponseDto;

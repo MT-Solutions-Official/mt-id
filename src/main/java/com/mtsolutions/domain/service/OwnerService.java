@@ -1,38 +1,36 @@
 package com.mtsolutions.domain.service;
 
-import com.mtsolutions.application.exception.ApplicationOwnerNotFoundException;
+import com.mtsolutions.application.exception.OwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.domain.constant.OwnerRole;
-import com.mtsolutions.domain.dto.request.CreateApplicationOwnerRequestDto;
 import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
-import com.mtsolutions.domain.entity.ApplicationOwner;
+import com.mtsolutions.domain.dto.request.CreateOwnerRequestDto;
+import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;
 import com.mtsolutions.domain.model.Phone;
-import com.mtsolutions.domain.repository.ApplicationOwnerRepository;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
+import com.mtsolutions.domain.repository.OwnerRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
 @ApplicationScoped
 @Slf4j
-public class ApplicationOwnerService {
+public class OwnerService {
 
-    private final ApplicationOwnerRepository applicationOwnerRepository;
-    private final ClientApplicationRepository clientApplicationRepository;
+    private final OwnerRepository ownerRepository;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
 
-    public ApplicationOwnerService(ApplicationOwnerRepository applicationOwnerRepository, ClientApplicationRepository clientApplicationRepository, BcryptService bcryptService, DateUtils dateUtils) {
-        this.applicationOwnerRepository = applicationOwnerRepository;
-        this.clientApplicationRepository = clientApplicationRepository;
+    public OwnerService(OwnerRepository ownerRepository, BcryptService bcryptService, DateUtils dateUtils) {
+        this.ownerRepository = ownerRepository;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
     }
 
-    public ApplicationOwner createApplicationOwner(CreateApplicationOwnerRequestDto request) {
-        log.info("Creating application owner with name: {}", request.name());
+    public Owner createOwner(CreateOwnerRequestDto request) {
+        log.info("Creating owner with name: {}", request.name());
 
         String hashedPassword = this.bcryptService.encryptPassword(request.password());
 
@@ -50,7 +48,7 @@ public class ApplicationOwnerService {
                 .password(hashedPassword)
                 .build();
 
-        ApplicationOwner applicationOwner = ApplicationOwner.builder()
+        Owner owner = Owner.builder()
                 .name(request.name())
                 .document(this.fillDocumentFields(request.document()))
                 .email(email)
@@ -62,23 +60,23 @@ public class ApplicationOwnerService {
                 .active(true)
                 .build();
 
-        this.applicationOwnerRepository.persist(applicationOwner);
-        log.info("Application owner created with ID: {}", applicationOwner.getOwnerId());
+        this.ownerRepository.persist(owner);
+        log.info("Owner created with ID: {}", owner.getOwnerId());
 
-        return applicationOwner;
+        return owner;
     }
 
-    public ApplicationOwner findApplicationOwnerById(String ownerId) {
-        return this.applicationOwnerRepository.findOwnerById(ownerId);
+    public Owner findOwnerById(String ownerId) {
+        return this.ownerRepository.findOwnerById(ownerId);
     }
 
-    public Boolean existsApplicationOwnerById(String ownerId) {
-        return this.applicationOwnerRepository.existsByOwnerId(ownerId);
+    public Boolean existsOwnerById(String ownerId) {
+        return this.ownerRepository.existsByOwnerId(ownerId);
     }
 
-    public ApplicationOwner findApplicationOwnerByEmail(String email) {
-        return this.applicationOwnerRepository.findOwnerByEmail(email)
-                .orElseThrow(ApplicationOwnerNotFoundException::new);
+    public Owner findOwnerByEmail(String email) {
+        return this.ownerRepository.findOwnerByEmail(email)
+                .orElseThrow(OwnerNotFoundException::new);
     }
 
     private Document fillDocumentFields(CreateDocumentRequestDto request) {

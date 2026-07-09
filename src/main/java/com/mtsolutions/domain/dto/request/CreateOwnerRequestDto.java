@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public record CreateApplicationOwnerRequestDto (
+public record CreateOwnerRequestDto (
         @NotBlank(message = "Name is required")
         String name,
         @NotBlank(message = "Email is required")

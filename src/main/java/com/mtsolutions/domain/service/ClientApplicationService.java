@@ -1,14 +1,14 @@
 package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.common.ContextComponent;
-import com.mtsolutions.application.exception.ApplicationOwnerNotFoundException;
+import com.mtsolutions.application.exception.OwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
-import com.mtsolutions.domain.entity.ApplicationOwner;
 import com.mtsolutions.domain.entity.ClientApplication;
+import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.model.ClientApplicationSecretResult;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -22,15 +22,15 @@ import java.util.List;
 public class ClientApplicationService {
 
     private final ClientApplicationRepository clientApplicationRepository;
-    private final ApplicationOwnerService applicationOwnerService;
+    private final OwnerService ownerService;
     private final KeyGeneratorUtils keyGeneratorUtils;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
     private final ContextComponent contextComponent;
 
-    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository, ApplicationOwnerService applicationOwnerService, KeyGeneratorUtils keyGeneratorUtils, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
+    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository, OwnerService ownerService, KeyGeneratorUtils keyGeneratorUtils, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
         this.clientApplicationRepository = clientApplicationRepository;
-        this.applicationOwnerService = applicationOwnerService;
+        this.ownerService = ownerService;
         this.keyGeneratorUtils = keyGeneratorUtils;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
@@ -40,11 +40,11 @@ public class ClientApplicationService {
     public ClientApplicationSecretResult createClientApplication(CreateClientApplicationRequestDto request) {
         log.info("Creating client application with name: {}", request.name());
 
-        if (Boolean.FALSE.equals(this.applicationOwnerService.existsApplicationOwnerById(request.ownerId()))) {
-            throw new ApplicationOwnerNotFoundException();
+        if (Boolean.FALSE.equals(this.ownerService.existsOwnerById(request.ownerId()))) {
+            throw new OwnerNotFoundException();
         }
 
-        ApplicationOwner owner = this.applicationOwnerService.findApplicationOwnerById(request.ownerId());
+        Owner owner = this.ownerService.findOwnerById(request.ownerId());
         String apiKey = this.keyGeneratorUtils.generateApiKey();
         String apiSecret = this.keyGeneratorUtils.generateApiSecret();
         String hashedApiSecret = this.bcryptService.encryptPassword(apiSecret);
@@ -81,10 +81,10 @@ public class ClientApplicationService {
         }
 
         for (String ownerId : request.ownerIds()) {
-            if (Boolean.FALSE.equals(this.applicationOwnerService.existsApplicationOwnerById(ownerId))) {
-                throw new ApplicationOwnerNotFoundException();
+            if (Boolean.FALSE.equals(this.ownerService.existsOwnerById(ownerId))) {
+                throw new OwnerNotFoundException();
             }
-            ApplicationOwner owner = this.applicationOwnerService.findApplicationOwnerById(ownerId);
+            Owner owner = this.ownerService.findOwnerById(ownerId);
             
             if (clientApplication.getOwners().stream().noneMatch(o -> o.getOwnerId().equals(owner.getOwnerId()))) {
                 clientApplication.getOwners().add(owner);

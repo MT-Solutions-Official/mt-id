@@ -1,8 +1,8 @@
-package com.mtsolutions.application.rsource.rest.examples;
+package com.mtsolutions.application.resource.rest.examples;
 
-public class ApplicationOwnerExamples {
+public class OwnerExamples {
 
-    public static final String CREATE_APPLICATION_OWNER = """
+    public static final String CREATE_OWNER = """
             {
               "name": "Thiago Picanço",
               "email": "thiago@mtsolutions.com",
@@ -15,7 +15,7 @@ public class ApplicationOwnerExamples {
             }
             """;
 
-    public static final String APPLICATION_OWNER_CREATED = """
+    public static final String OWNER_CREATED = """
             {
               "ownerId": "64a7f8b9c0e2a1b3d4f5e6a7",
               "name": "Thiago Picanço",

@@ -1,7 +1,7 @@
-package com.mtsolutions.application.rsource.rest;
+package com.mtsolutions.application.resource.rest;
 
 import com.mtsolutions.application.common.RequestParams;
-import com.mtsolutions.application.rsource.rest.examples.UserRoleExamples;
+import com.mtsolutions.application.resource.rest.examples.UserRoleExamples;
 import com.mtsolutions.domain.controller.UserRoleController;
 import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateUserRoleRequestDto;

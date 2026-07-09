@@ -1,7 +1,7 @@
-package com.mtsolutions.application.rsource.rest;
+package com.mtsolutions.application.resource.rest;
 
 import com.mtsolutions.application.common.RequestParams;
-import com.mtsolutions.application.rsource.rest.examples.UserExamples;
+import com.mtsolutions.application.resource.rest.examples.UserExamples;
 import com.mtsolutions.domain.controller.UserController;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
