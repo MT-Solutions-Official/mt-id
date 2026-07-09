@@ -169,4 +169,27 @@ public class UserExamples {
               "active": true
             }
             """;
+
+    public static final String USER_WITH_IMAGE = """
+            {
+              "userId": "64a7f8b9c0e2a1b3d4f5e6a8",
+              "appId": "507f1f77bcf86cd799439011",
+              "name": "John Doe",
+              "username": "john.doe",
+              "images": [
+                {
+                  "imageUrl": "https://res.cloudinary.com/demo/image/upload/v1234567890/mt-id/users/pictures/507f1f77bcf86cd799439011/profile/uuid.jpg",
+                  "imageType": "PROFILE",
+                  "fileName": "profile.jpg",
+                  "sizeInBytes": 128456,
+                  "verified": false,
+                  "uploadedAt": "2026-07-09T16:40:00.000"
+                }
+              ],
+              "createdAt": "2026-07-03T18:10:00.000Z",
+              "updatedAt": "2026-07-09T16:40:00.000Z",
+              "disabledAt": null,
+              "active": true
+            }
+            """;
 }

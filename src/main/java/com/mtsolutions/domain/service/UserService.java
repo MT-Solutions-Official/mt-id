@@ -1,13 +1,18 @@
 package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.common.ContextComponent;
+import com.mtsolutions.application.constant.CloudinaryFolder;
+import com.mtsolutions.application.service.CloudinaryService;
 import com.mtsolutions.application.exception.RequiredUserFieldMissingException;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.constant.UserRequiredField;
+import com.mtsolutions.domain.constant.ImageType;
 import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
+import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
+import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.User;
 import com.mtsolutions.domain.model.Address;
@@ -15,12 +20,17 @@ import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;
 import com.mtsolutions.domain.model.Phone;
+import com.mtsolutions.domain.model.UserImage;
 import com.mtsolutions.domain.repository.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -33,15 +43,17 @@ public class UserService {
     private final ClientApplicationService clientApplicationService;
     private final UserRoleService userRoleService;
     private final AddressService addressService;
+    private final CloudinaryService cloudinaryService;
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
     private final ContextComponent contextComponent;
 
-    public UserService(UserRepository userRepository, ClientApplicationService clientApplicationService, UserRoleService userRoleService, AddressService addressService, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
+    public UserService(UserRepository userRepository, ClientApplicationService clientApplicationService, UserRoleService userRoleService, AddressService addressService, CloudinaryService cloudinaryService, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
         this.userRepository = userRepository;
         this.clientApplicationService = clientApplicationService;
         this.userRoleService = userRoleService;
         this.addressService = addressService;
+        this.cloudinaryService = cloudinaryService;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
         this.contextComponent = contextComponent;
@@ -110,11 +122,112 @@ public class UserService {
         log.info("Address at index {} removed from user with ID: {}", addressIndex, userId);
     }
 
+    public User uploadUserImage(UploadUserImageRequestDto request) {
+        User user = this.userRepository.findUserById(request.userId());
+        this.validateAppAccess(user.getAppId());
+        this.validateImageRequest(request);
+
+        byte[] fileBytes;
+        try {
+            fileBytes = Files.readAllBytes(request.uploadedFilePath());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read uploaded image", e);
+        }
+
+        CloudinaryFolder folder = this.resolveCloudinaryFolder(request.imageType());
+        String publicId = this.buildImagePublicId(request.userId(), request.imageType());
+        String imageUrl = this.cloudinaryService.upload(fileBytes, publicId, folder);
+
+        UserImage uploadedImage = UserImage.builder()
+                .imageUrl(imageUrl)
+                .imageType(request.imageType())
+                .fileName(request.fileName())
+                .sizeInBytes(request.sizeInBytes())
+                .verified(false)
+                .uploadedAt(this.dateUtils.now())
+                .build();
+
+        if (user.getImages() == null) {
+            user.setImages(new ArrayList<>());
+        }
+
+        this.replaceImage(user, uploadedImage);
+        user.setUpdatedAt(this.dateUtils.now());
+        this.userRepository.persistOrUpdate(user);
+
+        log.info("Image uploaded for user with ID: {}, type: {}", user.getUserId(), request.imageType());
+        return user;
+    }
+
+    public User removeUserImage(RemoveUserImageRequestDto request) {
+        User user = this.userRepository.findUserById(request.userId());
+        this.validateAppAccess(user.getAppId());
+
+        if (user.getImages() == null || user.getImages().isEmpty()) {
+            throw new BadRequestException("User has no images to remove.");
+        }
+
+        boolean removed = false;
+        Iterator<UserImage> iterator = user.getImages().iterator();
+        while (iterator.hasNext()) {
+            UserImage image = iterator.next();
+            if (image != null && image.getImageType() == request.imageType()) {
+                this.deleteCloudinaryImage(image);
+                iterator.remove();
+                removed = true;
+            }
+        }
+
+        if (!removed) {
+            throw new BadRequestException("Image type not found for user.");
+        }
+
+        user.setUpdatedAt(this.dateUtils.now());
+        this.userRepository.persistOrUpdate(user);
+        log.info("Image removed for user with ID: {}, type: {}", user.getUserId(), request.imageType());
+        return user;
+    }
+
     private void validateAppAccess(String userAppId) {
         String authenticatedAppId = this.contextComponent.getAuthenticatedAppId();
         if (authenticatedAppId == null || authenticatedAppId.isBlank() || !authenticatedAppId.equals(userAppId)) {
             throw new ApplicationForbiddenException();
         }
+    }
+
+    private void validateImageRequest(UploadUserImageRequestDto request) {
+        if (request.imageType() == null) {
+            throw new BadRequestException("Image type is required.");
+        }
+        if (request.uploadedFilePath() == null) {
+            throw new BadRequestException("Image file is required.");
+        }
+        if (request.contentType() == null || !request.contentType().startsWith("image/")) {
+            throw new BadRequestException("Only image uploads are supported.");
+        }
+    }
+
+    private void replaceImage(User user, UserImage uploadedImage) {
+        user.getImages().removeIf(image -> image != null && image.getImageType() == uploadedImage.getImageType());
+        user.getImages().add(uploadedImage);
+    }
+
+    private void deleteCloudinaryImage(UserImage image) {
+        String publicId = this.cloudinaryService.extractPublicId(image.getImageUrl());
+        if (publicId != null) {
+            this.cloudinaryService.delete(publicId, "image");
+        }
+    }
+
+    private CloudinaryFolder resolveCloudinaryFolder(ImageType imageType) {
+        return switch (imageType) {
+            case PROFILE -> CloudinaryFolder.USER_PICTURE;
+            default -> CloudinaryFolder.USER_PICTURE;
+        };
+    }
+
+    private String buildImagePublicId(String userId, ImageType imageType) {
+        return userId + "/" + imageType.name().toLowerCase();
     }
 
 

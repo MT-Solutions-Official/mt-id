@@ -2,6 +2,8 @@ package com.mtsolutions.domain.controller;
 
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
+import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
+import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.entity.User;
 import com.mtsolutions.domain.service.UserService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -25,5 +27,13 @@ public class UserController {
 
     public void removeAddressFromUser(String userId, Integer addressIndex) {
         this.userService.removeAddressFromUser(userId, addressIndex);
+    }
+
+    public User uploadUserImage(UploadUserImageRequestDto request) {
+        return this.userService.uploadUserImage(request);
+    }
+
+    public User removeUserImage(RemoveUserImageRequestDto request) {
+        return this.userService.removeUserImage(request);
     }
 }

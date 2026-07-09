@@ -3,7 +3,7 @@ package com.mtsolutions.domain.constant;
 import lombok.Getter;
 
 @Getter
-public enum ImageType {
+public enum git ImageType {
     PROFILE("Profile Picture"),
     DOCUMENT_FRONT("Document Front"),
     DOCUMENT_BACK("Document Back"),

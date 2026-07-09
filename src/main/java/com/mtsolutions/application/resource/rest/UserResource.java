@@ -3,13 +3,17 @@ package com.mtsolutions.application.resource.rest;
 import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.resource.rest.examples.UserExamples;
 import com.mtsolutions.domain.controller.UserController;
+import com.mtsolutions.domain.constant.ImageType;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
+import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
+import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.dto.response.UserResponseDto;
 import com.mtsolutions.domain.entity.User;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.POST;
@@ -17,6 +21,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import io.quarkus.security.Authenticated;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
@@ -132,6 +138,60 @@ public class UserResource {
     public Response removeAddress(@PathParam(RequestParams.USER_ID) String userId,
                                   @PathParam(RequestParams.ADDRESS_INDEX) Integer addressIndex) {
         this.userController.removeAddressFromUser(userId, addressIndex);
+
+        return Response.status(Response.Status.NO_CONTENT)
+                .build();
+    }
+
+    @POST
+    @Path("/{userId}/images/{imageType}")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Authenticated
+    @Operation(
+            summary = "Upload user image",
+            description = "Uploads an image to Cloudinary and stores the reference on the user."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Image uploaded successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "User With Uploaded Image",
+                            value = UserExamples.USER_WITH_IMAGE)
+            )
+    )
+    public Response uploadImage(@PathParam(RequestParams.USER_ID) String userId,
+                                @PathParam(RequestParams.IMAGE_TYPE) ImageType imageType,
+                                @RestForm("image") FileUpload image) {
+        User user = this.userController.uploadUserImage(new UploadUserImageRequestDto(
+                userId,
+                imageType,
+                image.uploadedFile(),
+                image.fileName(),
+                image.size(),
+                image.contentType()
+        ));
+
+        return Response.status(Response.Status.OK)
+                .entity(new UserResponseDto(user))
+                .build();
+    }
+
+    @DELETE
+    @Path("/{userId}/images/{imageType}")
+    @Authenticated
+    @Operation(
+            summary = "Remove user image",
+            description = "Removes the image of the given type from Cloudinary and from the user record."
+    )
+    @APIResponse(
+            responseCode = "204",
+            description = "Image removed successfully"
+    )
+    public Response removeImage(@PathParam(RequestParams.USER_ID) String userId,
+                                @PathParam(RequestParams.IMAGE_TYPE) ImageType imageType) {
+        this.userController.removeUserImage(new RemoveUserImageRequestDto(userId, imageType));
 
         return Response.status(Response.Status.NO_CONTENT)
                 .build();

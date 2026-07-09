@@ -7,6 +7,7 @@ public class RequestParams {
     public static final String USER_ID = "userId";
     public static final String USER_ROLE_ID = "userRoleId";
     public static final String APP_ID = "appId";
+    public static final String IMAGE_TYPE = "imageType";
     public static final String ZIP_CODE = "zipCode";
     public static final String CEP = "cep";
     public static final String STREET = "street";
