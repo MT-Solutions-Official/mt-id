@@ -1,113 +1,111 @@
 package com.mtsolutions.domain.service;
 
-import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
 import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.AppTokenResponseDto;
+import com.mtsolutions.domain.dto.response.OwnerTokenResponseDto;
+import com.mtsolutions.domain.dto.response.UserTokenResponseDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.Owner;
-import com.mtsolutions.domain.repository.ClientApplicationRepository;
-import com.mtsolutions.domain.repository.OwnerRepository;
+import com.mtsolutions.domain.entity.User;
+import com.mtsolutions.domain.model.Email;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
-import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Duration;
 import java.util.Set;
 
 @ApplicationScoped
-@Slf4j
 public class JwtService {
 
-    @ConfigProperty(name = "mp.jwt.verify.issuer") String jwtIssuer;
-    @ConfigProperty(name = "app.mt.id.token.expiration.hours") Integer tokenExpirationInHours;
+    @ConfigProperty(name = "mp.jwt.verify.issuer")
+    String jwtIssuer;
 
-    private final OwnerRepository ownerRepository;
-    private final ClientApplicationRepository clientApplicationRepository;
-    private final BcryptService bcryptService;
-
-    public JwtService(OwnerRepository ownerRepository, ClientApplicationRepository clientApplicationRepository, BcryptService bcryptService) {
-        this.ownerRepository = ownerRepository;
-        this.clientApplicationRepository = clientApplicationRepository;
-        this.bcryptService = bcryptService;
-    }
-
-    public AppTokenResponseDto generateOwnerToken(String ownerEmail, String ownerPassword) {
-        String normalizedOwnerEmail = ownerEmail != null ? ownerEmail.trim() : null;
-
-        if (normalizedOwnerEmail == null || normalizedOwnerEmail.isBlank()
-                || ownerPassword == null || ownerPassword.isBlank()) {
-            throw new ApplicationAuthenticationFailedException();
-        }
-
-        Owner owner = this.ownerRepository.findOwnerByEmail(normalizedOwnerEmail)
-                .orElseThrow(ApplicationAuthenticationFailedException::new);
-
-        if (Boolean.FALSE.equals(owner.getActive())
-                || owner.getPassword() == null
-                || owner.getPassword().getPassword() == null
-                || !this.bcryptService.verifyPassword(ownerPassword, owner.getPassword().getPassword())) {
-            throw new ApplicationAuthenticationFailedException();
-        }
-
-        OwnerRole ownerRole = owner.getRole();
-        if (ownerRole == null) {
-            ownerRole = OwnerRole.OWNER_VIEWER;
-            owner.setRole(ownerRole);
-            this.ownerRepository.persistOrUpdate(owner);
-        }
-
+    public OwnerTokenResponseDto generateOwnerToken(Owner owner, String refreshTokenId, Duration accessExpiration, Duration refreshExpiration) {
+        OwnerRole ownerRole = owner.getRole() != null ? owner.getRole() : OwnerRole.OWNER_VIEWER;
         Set<String> groups = Set.of(ownerRole.name());
 
         String accessToken = Jwt.issuer(jwtIssuer)
                 .subject(owner.getOwnerId())
                 .upn(owner.getEmail().getEmail())
-                .claim("ownerId", owner.getOwnerId() != null ? owner.getOwnerId() : null)
+                .claim("ownerId", owner.getOwnerId())
                 .claim("name", owner.getName())
                 .claim("emailVerified", owner.getEmail().getVerified())
+                .claim("token_type", "access")
                 .groups(groups)
-                .expiresIn(Duration.ofHours(tokenExpirationInHours))
+                .expiresIn(accessExpiration)
                 .sign();
 
-        return new AppTokenResponseDto(
+        String refreshToken = Jwt.issuer(jwtIssuer)
+                .subject(owner.getOwnerId())
+                .upn(owner.getEmail().getEmail())
+                .claim("ownerId", owner.getOwnerId())
+                .claim("name", owner.getName())
+                .claim("emailVerified", owner.getEmail().getVerified())
+                .claim("token_type", "refresh")
+                .claim("jti", refreshTokenId)
+                .groups(Set.of("REFRESH_TOKEN"))
+                .expiresIn(refreshExpiration)
+                .sign();
+
+        return new OwnerTokenResponseDto(
                 accessToken,
+                refreshToken,
                 "Bearer",
-                Duration.ofHours(tokenExpirationInHours).getSeconds()
+                accessExpiration.getSeconds(),
+                refreshExpiration.getSeconds()
         );
     }
 
-    public AppTokenResponseDto generateApplicationToken(String apiKey, String apiSecret) {
-        String normalizedApiKey = apiKey != null ? apiKey.trim() : null;
-        if (normalizedApiKey == null || normalizedApiKey.isBlank()
-                || apiSecret == null || apiSecret.isBlank()) {
-            throw new ApplicationAuthenticationFailedException();
-        }
-
-        ClientApplication clientApplication = this.clientApplicationRepository.findClientApplicationByApiKey(normalizedApiKey)
-                .orElseThrow(ApplicationAuthenticationFailedException::new);
-
-        if (Boolean.FALSE.equals(clientApplication.getActive())
-                || clientApplication.getApiSecret() == null
-                || !this.bcryptService.verifyPassword(apiSecret, clientApplication.getApiSecret())) {
-            throw new ApplicationAuthenticationFailedException();
-        }
-
-        long expirationMinutes = clientApplication.getJwtExpirationInMinutes() != null
-                ? clientApplication.getJwtExpirationInMinutes()
-                : tokenExpirationInHours * 60L;
-
+    public AppTokenResponseDto generateApplicationToken(ClientApplication clientApplication, Duration expiration) {
         String accessToken = Jwt.issuer(jwtIssuer)
                 .subject(clientApplication.getAppId())
                 .claim("app_id", clientApplication.getAppId())
                 .claim("app_name", clientApplication.getName())
+                .claim("token_type", "access")
                 .groups(Set.of("APPLICATION"))
-                .expiresIn(Duration.ofMinutes(expirationMinutes))
+                .expiresIn(expiration)
                 .sign();
 
-        return new AppTokenResponseDto(
+        return tokenResponse(accessToken, expiration);
+    }
+
+    public UserTokenResponseDto generateUserToken(User user, Email loginEmail, String refreshTokenId, Duration accessExpiration, Duration refreshExpiration) {
+        String accessToken = Jwt.issuer(jwtIssuer)
+                .subject(user.getUserId())
+                .upn(loginEmail.getEmail())
+                .claim("userId", user.getUserId())
+                .claim("app_id", user.getAppId())
+                .claim("name", user.getName())
+                .claim("emailVerified", loginEmail.getVerified())
+                .claim("token_type", "access")
+                .groups(Set.of("USER"))
+                .expiresIn(accessExpiration)
+                .sign();
+
+        String refreshToken = Jwt.issuer(jwtIssuer)
+                .subject(user.getUserId())
+                .upn(loginEmail.getEmail())
+                .claim("userId", user.getUserId())
+                .claim("app_id", user.getAppId())
+                .claim("name", user.getName())
+                .claim("emailVerified", loginEmail.getVerified())
+                .claim("token_type", "refresh")
+                .claim("jti", refreshTokenId)
+                .groups(Set.of("REFRESH_TOKEN"))
+                .expiresIn(refreshExpiration)
+                .sign();
+
+        return new UserTokenResponseDto(
                 accessToken,
+                refreshToken,
                 "Bearer",
-                Duration.ofMinutes(expirationMinutes).getSeconds()
+                accessExpiration.getSeconds(),
+                refreshExpiration.getSeconds()
         );
+    }
+
+    private AppTokenResponseDto tokenResponse(String accessToken, Duration expiration) {
+        return new AppTokenResponseDto(accessToken, "Bearer", expiration.getSeconds());
     }
 }

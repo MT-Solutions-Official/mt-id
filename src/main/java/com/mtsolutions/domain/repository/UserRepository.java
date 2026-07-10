@@ -15,4 +15,9 @@ public class UserRepository implements PanacheMongoRepositoryBase<User, String> 
         return find("_id", new ObjectId(userId)).firstResultOptional()
                 .orElseThrow(UserNotFoundException::new);
     }
+
+    public User findUserByEmail(String email) {
+        return find("emails.email", email).firstResultOptional()
+                .orElseThrow(UserNotFoundException::new);
+    }
 }

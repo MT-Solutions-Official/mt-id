@@ -25,6 +25,7 @@ public class User {
     private String appId;
     private String name;
     private String username;
+    private String primaryEmail;
     private List<Email> emails = new ArrayList<>();
     private Password password;
     private List<Phone> phones = new ArrayList<>();

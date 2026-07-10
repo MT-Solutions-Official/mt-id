@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class Email {
 
     private String email;
+    private Boolean primary;
     private String verificationToken;
     private LocalDateTime verificationTokenExpiry;
     private Boolean verified;

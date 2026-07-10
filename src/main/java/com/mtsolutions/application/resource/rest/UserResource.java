@@ -18,6 +18,7 @@ import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import io.quarkus.security.Authenticated;
@@ -43,7 +44,7 @@ public class UserResource {
 
     @POST
     @Path("/create")
-    @Authenticated
+    @RolesAllowed("APPLICATION")
     @Operation(
             summary = "Create a new user",
             description = "Creates a new user with the provided details."

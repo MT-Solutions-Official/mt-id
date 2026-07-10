@@ -12,8 +12,10 @@ public class ApplicationAuthExamples {
     public static final String OWNER_TOKEN_RESPONSE = """
             {
               "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
               "tokenType": "Bearer",
-              "expiresIn": 86400
+              "expiresIn": 86400,
+              "refreshTokenExpiresIn": 2592000
             }
             """;
 
@@ -22,6 +24,43 @@ public class ApplicationAuthExamples {
               "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
               "tokenType": "Bearer",
               "expiresIn": 3600
+            }
+            """;
+
+    public static final String USER_TOKEN_REQUEST = """
+            {
+              "email": "user@example.com",
+              "password": "user-password"
+            }
+            """;
+
+    public static final String USER_TOKEN_RESPONSE = """
+            {
+              "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "tokenType": "Bearer",
+              "expiresIn": 86400,
+              "refreshTokenExpiresIn": 2592000
+            }
+            """;
+
+    public static final String OWNER_TOKEN_REFRESH_RESPONSE = """
+            {
+              "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "tokenType": "Bearer",
+              "expiresIn": 86400,
+              "refreshTokenExpiresIn": 2592000
+            }
+            """;
+
+    public static final String USER_TOKEN_REFRESH_RESPONSE = """
+            {
+              "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
+              "tokenType": "Bearer",
+              "expiresIn": 86400,
+              "refreshTokenExpiresIn": 2592000
             }
             """;
 }

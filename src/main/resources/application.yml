@@ -78,3 +78,6 @@ app:
       token:
         expiration:
           hours: ${APP_MT_ID_JWT_TOKEN_EXPIRATION_HOURS:24}
+      refresh-token:
+        expiration:
+          days: ${APP_MT_ID_JWT_REFRESH_TOKEN_EXPIRATION_DAYS:30}

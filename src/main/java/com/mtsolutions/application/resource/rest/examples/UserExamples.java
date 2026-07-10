@@ -4,7 +4,6 @@ public class UserExamples {
 
     public static final String CREATE_USER = """
             {
-              "appId": "507f1f77bcf86cd799439011",
               "name": "John Doe",
               "username": "john.doe",
               "email": ["john.doe@example.com"],

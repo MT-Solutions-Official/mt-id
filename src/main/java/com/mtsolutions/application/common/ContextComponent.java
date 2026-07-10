@@ -51,6 +51,22 @@ public class ContextComponent {
         return appId;
     }
 
+    public String getAuthenticatedAppIdOrNull() {
+        return this.jwt.getClaim("app_id");
+    }
+
+    public String getAuthenticatedUserIdOrNull() {
+        return this.jwt.getClaim("userId");
+    }
+
+    public String getAuthenticatedTokenTypeOrNull() {
+        return this.jwt.getClaim("token_type");
+    }
+
+    public String getAuthenticatedTokenIdOrNull() {
+        return this.jwt.getClaim("jti");
+    }
+
     public String getAuthenticatedOwnerId() {
         String ownerId = this.jwt.getClaim("ownerId");
         if (ownerId == null || ownerId.isBlank()) {

@@ -61,21 +61,23 @@ public class UserService {
 
     public User createUser(CreateUserRequestDto request) {
         log.info("Creating user with username: {}", request.username());
-        this.validateAppAccess(request.appId());
+        String appId = this.contextComponent.getAuthenticatedAppId();
+        this.validateApplicationAccess();
 
-        ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(request.appId());
+        ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(appId);
         this.validateRequiredFields(request, clientApplication.getRequiredUserFields());
 
         User user = User.builder()
-                .appId(request.appId())
+                .appId(appId)
                 .name(request.name())
                 .username(request.username())
+                .primaryEmail(this.resolvePrimaryEmail(request.email()))
                 .emails(this.buildEmails(request.email()))
                 .password(this.buildPassword(request.password()))
                 .phones(this.buildPhones(request.phones()))
                 .document(this.fillDocumentFields(request.document()))
                 .maritalStatus(request.maritalStatus())
-                .roleIds(this.userRoleService.resolveRoleIdsByAppIdAndRoleNames(request.appId(), request.roles()))
+                .roleIds(this.userRoleService.resolveRoleIdsByAppIdAndRoleNames(appId, request.roles()))
                 .createdAt(this.dateUtils.now())
                 .updatedAt(this.dateUtils.now())
                 .active(true)
@@ -89,7 +91,7 @@ public class UserService {
 
     public User attachAddressToUser(String userId, CreateAddressRequestDto request) {
         User user = this.userRepository.findUserById(userId);
-        this.validateAppAccess(user.getAppId());
+        this.validateAppOrSelfAccess(user);
         Address resolvedAddress = this.addressService.resolveAddress(request);
 
         if (user.getAddresses() == null) {
@@ -106,7 +108,7 @@ public class UserService {
 
     public void removeAddressFromUser(String userId, Integer addressIndex) {
         User user = this.userRepository.findUserById(userId);
-        this.validateAppAccess(user.getAppId());
+        this.validateAppOrSelfAccess(user);
         List<Address> addresses = user.getAddresses();
 
         if (addresses == null || addresses.isEmpty()) {
@@ -124,7 +126,7 @@ public class UserService {
 
     public User uploadUserImage(UploadUserImageRequestDto request) {
         User user = this.userRepository.findUserById(request.userId());
-        this.validateAppAccess(user.getAppId());
+        this.validateAppOrSelfAccess(user);
         this.validateImageRequest(request);
 
         byte[] fileBytes;
@@ -161,7 +163,7 @@ public class UserService {
 
     public User removeUserImage(RemoveUserImageRequestDto request) {
         User user = this.userRepository.findUserById(request.userId());
-        this.validateAppAccess(user.getAppId());
+        this.validateAppOrSelfAccess(user);
 
         if (user.getImages() == null || user.getImages().isEmpty()) {
             throw new BadRequestException("User has no images to remove.");
@@ -188,11 +190,26 @@ public class UserService {
         return user;
     }
 
-    private void validateAppAccess(String userAppId) {
-        String authenticatedAppId = this.contextComponent.getAuthenticatedAppId();
-        if (authenticatedAppId == null || authenticatedAppId.isBlank() || !authenticatedAppId.equals(userAppId)) {
+    private void validateApplicationAccess() {
+        if (!"APPLICATION".equals(this.contextComponent.getRole())) {
             throw new ApplicationForbiddenException();
         }
+    }
+
+    private void validateAppOrSelfAccess(User user) {
+        String authenticatedAppId = this.contextComponent.getAuthenticatedAppIdOrNull();
+        if ("APPLICATION".equals(this.contextComponent.getRole())
+                && authenticatedAppId != null
+                && authenticatedAppId.equals(user.getAppId())) {
+            return;
+        }
+
+        String authenticatedUserId = this.contextComponent.getAuthenticatedUserIdOrNull();
+        if (authenticatedUserId != null && authenticatedUserId.equals(user.getUserId())) {
+            return;
+        }
+
+        throw new ApplicationForbiddenException();
     }
 
     private void validateImageRequest(UploadUserImageRequestDto request) {
@@ -260,13 +277,31 @@ public class UserService {
             return new ArrayList<>();
         }
 
+        final boolean[] primaryAssigned = {false};
         return emails.stream()
                 .filter(this::hasText)
-                .map(email -> Email.builder()
-                        .email(email)
-                        .verified(false)
-                        .build())
+                .map(email -> {
+                    boolean isPrimary = !primaryAssigned[0];
+                    primaryAssigned[0] = true;
+
+                    return Email.builder()
+                            .email(email)
+                            .primary(isPrimary)
+                            .verified(false)
+                            .build();
+                })
                 .toList();
+    }
+
+    private String resolvePrimaryEmail(List<String> emails) {
+        if (emails == null) {
+            return null;
+        }
+
+        return emails.stream()
+                .filter(this::hasText)
+                .findFirst()
+                .orElse(null);
     }
 
     private List<Phone> buildPhones(List<Phone> phones) {

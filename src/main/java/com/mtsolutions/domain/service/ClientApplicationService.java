@@ -1,6 +1,7 @@
 package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.common.ContextComponent;
+import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.application.exception.OwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
@@ -40,6 +41,8 @@ public class ClientApplicationService {
     public ClientApplicationSecretResult createClientApplication(CreateClientApplicationRequestDto request) {
         log.info("Creating client application with name: {}", request.name());
 
+        this.validateOwnerAccess(request.ownerId(), null);
+
         if (Boolean.FALSE.equals(this.ownerService.existsOwnerById(request.ownerId()))) {
             throw new OwnerNotFoundException();
         }
@@ -76,6 +79,7 @@ public class ClientApplicationService {
 
     public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
+        this.validateOwnerAccess(null, clientApplication);
         if (clientApplication.getOwners() == null) {
             clientApplication.setOwners(new ArrayList<>());
         }
@@ -98,6 +102,7 @@ public class ClientApplicationService {
 
     public void updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
+        this.validateOwnerAccess(null, clientApplication);
         clientApplication.setRequiredUserFields(request.requiredUserFields() != null ? request.requiredUserFields() : new ArrayList<>());
         clientApplication.setUpdatedAt(this.dateUtils.now());
 
@@ -106,6 +111,10 @@ public class ClientApplicationService {
     }
 
     public ClientApplicationSecretResult rotateClientApplicationSecret() {
+        if (!"APPLICATION".equals(this.contextComponent.getRole())) {
+            throw new ApplicationForbiddenException();
+        }
+
         String appId = this.contextComponent.getAuthenticatedAppId();
         ClientApplication clientApplication = this.findClientApplicationById(appId);
         String apiSecret = this.keyGeneratorUtils.generateApiSecret();
@@ -117,5 +126,21 @@ public class ClientApplicationService {
 
         log.info("Client application secret rotated for ID: {}", clientApplication.getAppId());
         return new ClientApplicationSecretResult(clientApplication, apiSecret);
+    }
+
+    private void validateOwnerAccess(String ownerId, ClientApplication clientApplication) {
+        if (!"OWNER_WRITER".equals(this.contextComponent.getRole())) {
+            throw new ApplicationForbiddenException();
+        }
+
+        String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
+        if (ownerId != null && !authenticatedOwnerId.equals(ownerId)) {
+            throw new ApplicationForbiddenException();
+        }
+
+        if (clientApplication != null && clientApplication.getOwners() != null
+                && clientApplication.getOwners().stream().noneMatch(owner -> authenticatedOwnerId.equals(owner.getOwnerId()))) {
+            throw new ApplicationForbiddenException();
+        }
     }
 }

@@ -11,6 +11,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -34,7 +35,7 @@ public class ClientApplicationResource {
 
     @POST
     @Path("/create")
-    @PermitAll
+    @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Create a new client application",
             description = "Creates a new client application with the provided details."
@@ -68,7 +69,7 @@ public class ClientApplicationResource {
 
     @PATCH
     @Path("/add-owner")
-    @PermitAll
+    @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Add owners to a client application",
             description = "Adds owners to a client application with the provided details."
@@ -95,7 +96,7 @@ public class ClientApplicationResource {
 
     @PATCH
     @Path("/required-user-fields")
-    @PermitAll
+    @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Update required user fields for a client application",
             description = "Defines which user fields must be present when creating users for the given client application."
@@ -122,7 +123,7 @@ public class ClientApplicationResource {
 
     @PATCH
     @Path("/rotate-secret")
-    @Authenticated
+    @RolesAllowed("APPLICATION")
     @Operation(
             summary = "Rotate API secret",
             description = "Rotates the authenticated client application's API secret and returns it only once."
