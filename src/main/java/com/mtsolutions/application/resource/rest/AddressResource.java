@@ -20,7 +20,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @RequestScoped
-@Path("/addresses")
+@Path("/api/v1/addresses")
 @Tag(name = "Addresses", description = "Lookup addresses by ZIP code")
 public class AddressResource {
 

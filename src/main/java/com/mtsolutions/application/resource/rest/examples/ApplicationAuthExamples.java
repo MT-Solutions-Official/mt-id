@@ -34,6 +34,12 @@ public class ApplicationAuthExamples {
             }
             """;
 
+    public static final String GOOGLE_TOKEN_REQUEST = """
+            {
+              "idToken": "google-id-token"
+            }
+            """;
+
     public static final String USER_TOKEN_RESPONSE = """
             {
               "accessToken": "eyJhbGciOiJSUzI1NiJ9...",

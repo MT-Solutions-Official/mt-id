@@ -21,7 +21,6 @@ import jakarta.ws.rs.Path;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import io.quarkus.security.Authenticated;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -78,7 +77,7 @@ public class UserResource {
 
     @PATCH
     @Path("/{userId}/address")
-    @Authenticated
+    @RolesAllowed({"APPLICATION", "USER"})
     @Operation(
             summary = "Attach address to user",
             description = "Appends an address to the user. Common fields are required and country-specific fields are optional."
@@ -127,7 +126,7 @@ public class UserResource {
 
     @DELETE
     @Path("/{userId}/address/{addressIndex}")
-    @Authenticated
+    @RolesAllowed({"APPLICATION", "USER"})
     @Operation(
             summary = "Remove address from user",
             description = "Removes an address from the user's address list by index."
@@ -147,7 +146,7 @@ public class UserResource {
     @POST
     @Path("/{userId}/images/{imageType}")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Authenticated
+    @RolesAllowed({"APPLICATION", "USER"})
     @Operation(
             summary = "Upload user image",
             description = "Uploads an image to Cloudinary and stores the reference on the user."
@@ -181,7 +180,7 @@ public class UserResource {
 
     @DELETE
     @Path("/{userId}/images/{imageType}")
-    @Authenticated
+    @RolesAllowed({"APPLICATION", "USER"})
     @Operation(
             summary = "Remove user image",
             description = "Removes the image of the given type from Cloudinary and from the user record."

@@ -36,6 +36,8 @@ quarkus:
     info-version: 1.0.0
 
   rest-client:
+    google-tokeninfo:
+      url: ${APP_GOOGLE_TOKENINFO_URL:https://oauth2.googleapis.com}
     viacep:
       url: ${APP_VIACEP_URL:https://viacep.com.br/ws}
       scope: jakarta.inject.Singleton
@@ -75,6 +77,11 @@ app:
   mt:
     id:
       timezone: ${APP_MT_ID_TIMEZONE:America/Sao_Paulo}
+      google:
+        owner:
+          audience: ${APP_MT_ID_GOOGLE_OWNER_AUDIENCE:298569807540-sg0r9rndj2i3n2sujr1sobp9nr4in59c.apps.googleusercontent.com}
+        user:
+          audience: ${APP_MT_ID_GOOGLE_USER_AUDIENCE:298569807540-sg0r9rndj2i3n2sujr1sobp9nr4in59c.apps.googleusercontent.com}
       token:
         expiration:
           hours: ${APP_MT_ID_JWT_TOKEN_EXPIRATION_HOURS:24}

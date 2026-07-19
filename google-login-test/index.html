@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MT-ID Google Login Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      max-width: 860px;
+      line-height: 1.4;
+    }
+
+    .row {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    pre {
+      overflow: auto;
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 6px;
+      max-height: 280px;
+    }
+
+    .ok { color: #0d7a2c; }
+    .error { color: #a02222; }
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <h1>MT-ID Google Login Test</h1>
+  <p>Use esta tela para testar o endpoint de login Google do backend.</p>
+
+  <div class="card">
+    <div class="row">
+      <label for="backendUrl">Backend URL</label>
+      <input id="backendUrl" value="http://localhost:8081" />
+    </div>
+
+    <div class="row">
+      <label for="clientId">Google Client ID</label>
+      <input id="clientId" value="298569807540-sg0r9rndj2i3n2sujr1sobp9nr4in59c.apps.googleusercontent.com" />
+    </div>
+
+    <div class="row">
+      <label for="authType">Endpoint</label>
+      <select id="authType">
+        <option value="users">/api/v1/auth/users/google-token</option>
+        <option value="owners">/api/v1/auth/owners/google-token</option>
+      </select>
+    </div>
+
+    <button id="initBtn" type="button">Inicializar botao Google</button>
+
+    <div class="row" style="margin-top: 12px;">
+      <div id="googleBtn"></div>
+    </div>
+
+    <p id="status">Status: aguardando inicializacao.</p>
+  </div>
+
+  <div class="card">
+    <h3>Google ID Token (recebido do Google)</h3>
+    <textarea id="idToken" rows="7" placeholder="Vai preencher apos login no Google"></textarea>
+    <button id="sendBtn" type="button">Enviar token para backend</button>
+  </div>
+
+  <div class="card">
+    <h3>Resposta do backend</h3>
+    <pre id="responseOut">Sem resposta ainda.</pre>
+  </div>
+
+  <div class="card">
+    <h3>Payload do ID Token (debug)</h3>
+    <pre id="payloadOut">Sem token ainda.</pre>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const idTokenEl = document.getElementById("idToken");
+    const responseOut = document.getElementById("responseOut");
+    const payloadOut = document.getElementById("payloadOut");
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = "Status: " + message;
+      statusEl.className = isError ? "error" : "ok";
+    }
+
+    function decodeJwtPayload(token) {
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+      const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+      const json = atob(padded);
+      return JSON.parse(json);
+    }
+
+    function handleGoogleCredentialResponse(response) {
+      if (!response || !response.credential) {
+        setStatus("Google nao retornou credential.", true);
+        return;
+      }
+
+      idTokenEl.value = response.credential;
+      try {
+        const payload = decodeJwtPayload(response.credential);
+        payloadOut.textContent = JSON.stringify(payload, null, 2);
+      } catch (e) {
+        payloadOut.textContent = "Falha ao decodificar payload: " + e;
+      }
+
+      setStatus("ID token recebido. Agora clique em 'Enviar token para backend'.");
+    }
+
+    function initGoogleButton() {
+      const clientId = document.getElementById("clientId").value.trim();
+      if (!clientId) {
+        setStatus("Preencha o Google Client ID.", true);
+        return;
+      }
+
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        setStatus("SDK do Google ainda nao carregou. Tente novamente em alguns segundos.", true);
+        return;
+      }
+
+      document.getElementById("googleBtn").innerHTML = "";
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredentialResponse
+      });
+
+      google.accounts.id.renderButton(
+        document.getElementById("googleBtn"),
+        { theme: "outline", size: "large", text: "signin_with" }
+      );
+
+      setStatus("Botao Google inicializado.");
+    }
+
+    async function sendTokenToBackend() {
+      const backendUrl = document.getElementById("backendUrl").value.trim();
+      const type = document.getElementById("authType").value;
+      const idToken = idTokenEl.value.trim();
+
+      if (!backendUrl || !idToken) {
+        setStatus("Backend URL e ID token sao obrigatorios.", true);
+        return;
+      }
+
+      const url = `${backendUrl}/api/v1/auth/${type}/google-token`;
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken })
+        });
+
+        const text = await res.text();
+        let body = text;
+        try {
+          body = JSON.parse(text);
+        } catch (_) {
+          // Keep raw text when response is not JSON.
+        }
+
+        responseOut.textContent = JSON.stringify({
+          status: res.status,
+          ok: res.ok,
+          body
+        }, null, 2);
+
+        if (res.ok) {
+          setStatus("Login validado no backend com sucesso.");
+        } else {
+          setStatus(`Backend retornou ${res.status}. Veja detalhes abaixo.`, true);
+        }
+      } catch (e) {
+        responseOut.textContent = String(e);
+        setStatus("Falha de rede/CORS ao chamar backend.", true);
+      }
+    }
+
+    document.getElementById("initBtn").addEventListener("click", initGoogleButton);
+    document.getElementById("sendBtn").addEventListener("click", sendTokenToBackend);
+  </script>
+</body>
+</html>
+
