@@ -238,8 +238,8 @@ public class UserService {
 
     private CloudinaryFolder resolveCloudinaryFolder(ImageType imageType) {
         return switch (imageType) {
-            case PROFILE -> CloudinaryFolder.USER_PICTURE;
-            default -> CloudinaryFolder.USER_PICTURE;
+            case PROFILE, SELFIE_KYC -> CloudinaryFolder.USER_PICTURE;
+            case DOCUMENT_FRONT, DOCUMENT_BACK, PROOF_OF_ADDRESS, OTHER -> CloudinaryFolder.USER_DOCUMENT;
         };
     }
 

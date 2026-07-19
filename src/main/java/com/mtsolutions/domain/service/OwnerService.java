@@ -10,7 +10,6 @@ import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;
 import com.mtsolutions.domain.model.Phone;
-import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import com.mtsolutions.domain.repository.OwnerRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
@@ -80,22 +79,30 @@ public class OwnerService {
     }
 
     private Document fillDocumentFields(CreateDocumentRequestDto request) {
+        if (request == null) {
+            return null;
+        }
+
         Document document = new Document();
-        if (request.cpf() != null) document.setCpf(request.cpf());
-        if (request.rg() != null) document.setRg(request.rg());
-        if (request.cnpj() != null) document.setCnpj(request.cnpj());
-        if (request.cnh() != null) document.setCnh(request.cnh());
-        if (request.nik() != null) document.setNik(request.nik());
-        if (request.npwp() != null) document.setNpwp(request.npwp());
-        if (request.sim() != null) document.setSim(request.sim());
-        if (request.ssn() != null) document.setSsn(request.ssn());
-        if (request.ein() != null) document.setEin(request.ein());
-        if (request.usDriverLicense() != null) document.setUsDriverLicense(request.usDriverLicense());
-        if (request.nif() != null) document.setNif(request.nif());
-        if (request.niss() != null) document.setNiss(request.niss());
-        if (request.cc() != null) document.setCc(request.cc());
-        if (request.passport() != null) document.setPassport(request.passport());
+        if (hasText(request.cpf())) document.setCpf(request.cpf());
+        if (hasText(request.rg())) document.setRg(request.rg());
+        if (hasText(request.cnpj())) document.setCnpj(request.cnpj());
+        if (hasText(request.cnh())) document.setCnh(request.cnh());
+        if (hasText(request.nik())) document.setNik(request.nik());
+        if (hasText(request.npwp())) document.setNpwp(request.npwp());
+        if (hasText(request.sim())) document.setSim(request.sim());
+        if (hasText(request.ssn())) document.setSsn(request.ssn());
+        if (hasText(request.ein())) document.setEin(request.ein());
+        if (hasText(request.usDriverLicense())) document.setUsDriverLicense(request.usDriverLicense());
+        if (hasText(request.nif())) document.setNif(request.nif());
+        if (hasText(request.niss())) document.setNiss(request.niss());
+        if (hasText(request.cc())) document.setCc(request.cc());
+        if (hasText(request.passport())) document.setPassport(request.passport());
 
         return document;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

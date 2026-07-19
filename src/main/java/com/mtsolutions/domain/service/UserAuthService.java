@@ -3,6 +3,7 @@ package com.mtsolutions.domain.service;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.client.google.GoogleTokenInfoResponseDto;
 import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
+import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.domain.dto.response.UserTokenResponseDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.User;
@@ -13,7 +14,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -32,6 +32,7 @@ public class UserAuthService {
     private final UserRefreshTokenService userRefreshTokenService;
     private final GoogleTokenVerificationService googleTokenVerificationService;
     private final ContextComponent contextComponent;
+    private final DateUtils dateUtils;
 
     public UserAuthService(UserRepository userRepository,
                            ClientApplicationRepository clientApplicationRepository,
@@ -39,7 +40,8 @@ public class UserAuthService {
                            JwtService jwtService,
                            UserRefreshTokenService userRefreshTokenService,
                            GoogleTokenVerificationService googleTokenVerificationService,
-                           ContextComponent contextComponent) {
+                           ContextComponent contextComponent,
+                           DateUtils dateUtils) {
         this.userRepository = userRepository;
         this.clientApplicationRepository = clientApplicationRepository;
         this.bcryptService = bcryptService;
@@ -47,6 +49,7 @@ public class UserAuthService {
         this.userRefreshTokenService = userRefreshTokenService;
         this.googleTokenVerificationService = googleTokenVerificationService;
         this.contextComponent = contextComponent;
+        this.dateUtils = dateUtils;
     }
 
     public UserTokenResponseDto generateUserToken(String email, String password) {
@@ -70,9 +73,6 @@ public class UserAuthService {
 
     public UserTokenResponseDto generateGoogleUserToken(String idToken) {
         GoogleTokenInfoResponseDto googleTokenInfo = this.verifyGoogleIdToken(idToken);
-        if (!googleTokenInfo.isEmailVerified() || googleTokenInfo.getEmail() == null || googleTokenInfo.getEmail().isBlank()) {
-            throw new ApplicationAuthenticationFailedException();
-        }
 
         User user = this.userRepository.findUserByEmail(googleTokenInfo.getEmail());
         Email loginEmail = this.resolveLoginEmail(user, googleTokenInfo.getEmail());
@@ -163,7 +163,7 @@ public class UserAuthService {
         loginEmail.setVerified(true);
         loginEmail.setVerificationToken(null);
         loginEmail.setVerificationTokenExpiry(null);
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdatedAt(this.dateUtils.now());
         this.userRepository.persistOrUpdate(user);
     }
 

@@ -3,6 +3,7 @@ package com.mtsolutions.domain.service;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.client.google.GoogleTokenInfoResponseDto;
 import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
+import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.OwnerTokenResponseDto;
 import com.mtsolutions.domain.entity.Owner;
@@ -11,7 +12,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -32,19 +32,22 @@ public class OwnerAuthService {
     private final OwnerRefreshTokenService ownerRefreshTokenService;
     private final GoogleTokenVerificationService googleTokenVerificationService;
     private final ContextComponent contextComponent;
+    private final DateUtils dateUtils;
 
     public OwnerAuthService(OwnerRepository ownerRepository,
                             BcryptService bcryptService,
                             JwtService jwtService,
                             OwnerRefreshTokenService ownerRefreshTokenService,
                             GoogleTokenVerificationService googleTokenVerificationService,
-                            ContextComponent contextComponent) {
+                            ContextComponent contextComponent,
+                            DateUtils dateUtils) {
         this.ownerRepository = ownerRepository;
         this.bcryptService = bcryptService;
         this.jwtService = jwtService;
         this.ownerRefreshTokenService = ownerRefreshTokenService;
         this.googleTokenVerificationService = googleTokenVerificationService;
         this.contextComponent = contextComponent;
+        this.dateUtils = dateUtils;
     }
 
     public OwnerTokenResponseDto generateOwnerToken(String email, String password) {
@@ -73,9 +76,6 @@ public class OwnerAuthService {
 
     public OwnerTokenResponseDto generateGoogleOwnerToken(String idToken) {
         GoogleTokenInfoResponseDto googleTokenInfo = this.verifyGoogleIdToken(idToken);
-        if (!googleTokenInfo.isEmailVerified() || googleTokenInfo.getEmail() == null || googleTokenInfo.getEmail().isBlank()) {
-            throw new ApplicationAuthenticationFailedException();
-        }
 
         Owner owner = this.ownerRepository.findOwnerByEmail(googleTokenInfo.getEmail())
                 .orElseThrow(ApplicationAuthenticationFailedException::new);
@@ -156,7 +156,7 @@ public class OwnerAuthService {
         owner.getEmail().setVerified(true);
         owner.getEmail().setVerificationToken(null);
         owner.getEmail().setVerificationTokenExpiry(null);
-        owner.setUpdatedAt(LocalDateTime.now());
+        owner.setUpdatedAt(this.dateUtils.now());
         this.ownerRepository.persistOrUpdate(owner);
     }
 

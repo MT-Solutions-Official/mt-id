@@ -85,11 +85,8 @@ public class ClientApplicationService {
         }
 
         for (String ownerId : request.ownerIds()) {
-            if (Boolean.FALSE.equals(this.ownerService.existsOwnerById(ownerId))) {
-                throw new OwnerNotFoundException();
-            }
             Owner owner = this.ownerService.findOwnerById(ownerId);
-            
+
             if (clientApplication.getOwners().stream().noneMatch(o -> o.getOwnerId().equals(owner.getOwnerId()))) {
                 clientApplication.getOwners().add(owner);
             }
