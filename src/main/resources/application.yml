@@ -22,6 +22,14 @@ quarkus:
     connection-string: ${APP_MT_ID_MONGODB_ENDPOINT:mongodb://localhost:27017/}
     database: ${APP_MT_ID_MONGODB_DATABASE:mt-id}
 
+  mailer:
+    from: ${APP_MT_ID_MAILER_FROM:no-reply@mt-id.com}
+    host: ${APP_MT_ID_MAILER_HOST:smtp.gmail.com}
+    port: ${APP_MT_ID_MAILER_PORT:587}
+    start-tls: REQUIRED
+    username: ${APP_MT_ID_MAILER_USERNAME:}
+    password: ${APP_MT_ID_MAILER_PASSWORD:}
+    mock: ${APP_MT_ID_MAILER_MOCK:false}
 
   swagger-ui:
     title: MT ID API Documentation
@@ -67,7 +75,6 @@ smallrye:
       key:
         location: privateKey.pem
 
-
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:di5cbe8ni}
   api-key: ${CLOUDINARY_API_KEY:735658489191162}
@@ -77,6 +84,30 @@ app:
   mt:
     id:
       timezone: ${APP_MT_ID_TIMEZONE:America/Sao_Paulo}
+      base-url: ${APP_MT_ID_BASE_URL:http://localhost:8081}
+      email:
+        verification:
+          token:
+            ttl:
+              minutes: ${APP_MT_ID_EMAIL_VERIFICATION_TOKEN_TTL_MINUTES:30}
+        password:
+          reset:
+            token:
+              ttl:
+                minutes: ${APP_MT_ID_PASSWORD_RESET_TOKEN_TTL_MINUTES:15}
+      throttle:
+        verification-send:
+          max-attempts: ${APP_MT_ID_THROTTLE_VERIFICATION_SEND_MAX_ATTEMPTS:5}
+          window:
+            seconds: ${APP_MT_ID_THROTTLE_VERIFICATION_SEND_WINDOW_SECONDS:3600}
+          min-interval:
+            seconds: ${APP_MT_ID_THROTTLE_VERIFICATION_SEND_MIN_INTERVAL_SECONDS:30}
+        forgot-password:
+          max-attempts: ${APP_MT_ID_THROTTLE_FORGOT_PASSWORD_MAX_ATTEMPTS:5}
+          window:
+            seconds: ${APP_MT_ID_THROTTLE_FORGOT_PASSWORD_WINDOW_SECONDS:3600}
+          min-interval:
+            seconds: ${APP_MT_ID_THROTTLE_FORGOT_PASSWORD_MIN_INTERVAL_SECONDS:30}
       google:
         owner:
           audience: ${APP_MT_ID_GOOGLE_OWNER_AUDIENCE:298569807540-sg0r9rndj2i3n2sujr1sobp9nr4in59c.apps.googleusercontent.com}

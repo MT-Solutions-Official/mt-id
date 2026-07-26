@@ -2,11 +2,24 @@ package com.mtsolutions.application.resource.rest.examples;
 
 public class ClientApplicationExamples {
 
+    private ClientApplicationExamples() {
+    }
+
     public static final String CREATE_CLIENT_APPLICATION = """
             {
                 "name": "Example Client Application",
                 "ownerId": "507f1f77bcf86cd799439011",
                 "description": "This is an example client application.",
+                "logoUrl": "https://cdn.example.com/logos/example.png",
+                "emailSettings": {
+                    "fromEmail": "no-reply@example.com",
+                    "fromName": "Example App",
+                    "replyTo": "support@example.com",
+                    "supportEmail": "support@example.com",
+                    "supportUrl": "https://example.com/support",
+                    "verificationRedirectUrl": "https://example.com/verify",
+                    "passwordResetRedirectUrl": "https://example.com/reset-password"
+                },
                 "jwtExpirationInMinutes": 60,
                 "refreshTokenExpirationInDays": 30,
                 "allowedOrigins": ["https://example.com", "https://another-example.com"],
@@ -19,6 +32,16 @@ public class ClientApplicationExamples {
                 "appId": "507f1f77bcf86cd799439011",
                 "name": "Example Client Application",
                 "description": "This is an example client application.",
+                "logoUrl": "https://cdn.example.com/logos/example.png",
+                "emailSettings": {
+                    "fromEmail": "no-reply@example.com",
+                    "fromName": "Example App",
+                    "replyTo": "support@example.com",
+                    "supportEmail": "support@example.com",
+                    "supportUrl": "https://example.com/support",
+                    "verificationRedirectUrl": "https://example.com/verify",
+                    "passwordResetRedirectUrl": "https://example.com/reset-password"
+                },
                 "apiKey": "exampleApiKey123456",
                 "apiSecret": "exampleApiSecret123456",
                 "jwtExpirationInMinutes": 60,
@@ -50,6 +73,16 @@ public class ClientApplicationExamples {
                 "appId": "507f1f77bcf86cd799439011",
                 "name": "Example Client Application",
                 "description": "This is an example client application.",
+                "logoUrl": "https://cdn.example.com/logos/example.png",
+                "emailSettings": {
+                    "fromEmail": "no-reply@example.com",
+                    "fromName": "Example App",
+                    "replyTo": "support@example.com",
+                    "supportEmail": "support@example.com",
+                    "supportUrl": "https://example.com/support",
+                    "verificationRedirectUrl": "https://example.com/verify",
+                    "passwordResetRedirectUrl": "https://example.com/reset-password"
+                },
                 "apiKey": "exampleApiKey123456",
                 "apiSecret": "exampleNewApiSecret123456",
                 "jwtExpirationInMinutes": 60,

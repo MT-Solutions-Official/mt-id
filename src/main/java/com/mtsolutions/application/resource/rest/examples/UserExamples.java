@@ -2,6 +2,9 @@ package com.mtsolutions.application.resource.rest.examples;
 
 public class UserExamples {
 
+    private UserExamples() {
+    }
+
     public static final String CREATE_USER = """
             {
               "name": "John Doe",
@@ -72,6 +75,26 @@ public class UserExamples {
               "updatedAt": "2026-07-03T18:10:00.000Z",
               "disabledAt": null,
               "active": true
+            }
+            """;
+
+    public static final String SEND_EMAIL_VERIFICATION = """
+            {
+              "email": "john.doe@example.com"
+            }
+            """;
+
+    public static final String FORGOT_PASSWORD = """
+            {
+              "email": "john.doe@example.com",
+              "appId": "507f1f77bcf86cd799439011"
+            }
+            """;
+
+    public static final String RESET_PASSWORD = """
+            {
+              "token": "f8b9d13f-c980-4efb-a7ef-c7ecf4cf4d10",
+              "newPassword": "StrongPassword123!"
             }
             """;
 

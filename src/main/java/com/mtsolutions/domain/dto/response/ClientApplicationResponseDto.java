@@ -3,6 +3,7 @@ package com.mtsolutions.domain.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mtsolutions.domain.constant.UserRequiredField;
 import com.mtsolutions.domain.entity.ClientApplication;
+import com.mtsolutions.domain.model.EmailSettings;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +13,8 @@ public record ClientApplicationResponseDto (
         String appId,
         String name,
         String description,
+        String logoUrl,
+        EmailSettings emailSettings,
         String apiKey,
         String apiSecret,
         Integer jwtExpirationInMinutes,
@@ -32,6 +35,8 @@ public record ClientApplicationResponseDto (
                 clientApplication.getAppId(),
                 clientApplication.getName(),
                 clientApplication.getDescription(),
+                clientApplication.getLogoUrl(),
+                clientApplication.getEmailSettings(),
                 clientApplication.getApiKey(),
                 apiSecret,
                 clientApplication.getJwtExpirationInMinutes(),

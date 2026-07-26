@@ -14,6 +14,8 @@ public record CreateClientApplicationRequestDto (
         @NotBlank(message = "Owner ID is required")
         String ownerId,
         String description,
+        String logoUrl,
+        EmailSettingsRequestDto emailSettings,
         @NotNull(message = "JWT expiration time is required")
         @Positive(message = "JWT expiration time must be a positive integer")
         Integer jwtExpirationInMinutes,

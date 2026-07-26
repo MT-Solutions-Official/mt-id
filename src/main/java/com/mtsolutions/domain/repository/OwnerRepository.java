@@ -13,10 +13,8 @@ public class OwnerRepository implements PanacheMongoRepositoryBase<Owner, String
 
     public Owner findOwnerById(String ownerId) {
         if (!ObjectId.isValid(ownerId)) throw new OwnerNotFoundException();
-
         return find("_id", new ObjectId(ownerId)).firstResultOptional()
                 .orElseThrow(OwnerNotFoundException::new);
-
     }
 
     public Boolean existsByOwnerId(String ownerId) {
@@ -26,5 +24,13 @@ public class OwnerRepository implements PanacheMongoRepositoryBase<Owner, String
 
     public Optional<Owner> findOwnerByEmail(String email) {
         return find("email.email", email).firstResultOptional();
+    }
+
+    public Optional<Owner> findOwnerByEmailVerificationToken(String token) {
+        return find("email.verificationToken", token).firstResultOptional();
+    }
+
+    public Optional<Owner> findOwnerByPasswordResetToken(String token) {
+        return find("password.passwordResetToken", token).firstResultOptional();
     }
 }

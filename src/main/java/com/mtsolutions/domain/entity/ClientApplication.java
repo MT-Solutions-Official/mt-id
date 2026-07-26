@@ -1,6 +1,7 @@
 package com.mtsolutions.domain.entity;
 
 import com.mtsolutions.domain.constant.UserRequiredField;
+import com.mtsolutions.domain.model.EmailSettings;
 import io.quarkus.mongodb.panache.common.MongoEntity;
 import lombok.*;
 import org.bson.BsonType;
@@ -26,6 +27,8 @@ public class ClientApplication {
     private List<Owner> owners = new ArrayList<>();
     private String name;
     private String description;
+    private String logoUrl;
+    private EmailSettings emailSettings;
 
     private String apiKey;
     private String apiSecret;

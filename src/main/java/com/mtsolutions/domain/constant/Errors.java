@@ -20,8 +20,10 @@ public enum Errors {
     KODEPOS_ZIP_NOT_FOUND("KodePos zip not found"),
     KODEPOS_API_UNAVAILABLE("KodePos API unavailable"),
     ZIPPOPOTAM_ZIP_NOT_FOUND("Zippopotam zip not found"),
-    ZIPPOPOTAM_API_UNAVAILABLE("Zippopotam API unavailable");
-
+    ZIPPOPOTAM_API_UNAVAILABLE("Zippopotam API unavailable"),
+    EMAIL_ALREADY_VERIFIED("Email is already verified"),
+    INVALID_OR_EXPIRED_TOKEN("Invalid or expired token"),
+    RATE_LIMIT_EXCEEDED("Too many requests. Please try again later.");
 
     private final String displayName;
 

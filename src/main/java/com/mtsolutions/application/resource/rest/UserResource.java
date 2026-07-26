@@ -6,29 +6,37 @@ import com.mtsolutions.domain.controller.UserController;
 import com.mtsolutions.domain.constant.ImageType;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
+import com.mtsolutions.domain.dto.request.ForgotPasswordRequestDto;
 import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
+import com.mtsolutions.domain.dto.request.ResetPasswordRequestDto;
+import com.mtsolutions.domain.dto.request.SendEmailVerificationRequestDto;
 import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.dto.response.UserResponseDto;
 import com.mtsolutions.domain.entity.User;
+import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.DELETE;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
-import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.jboss.resteasy.reactive.RestForm;
-import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 @RequestScoped
 @Path("/api/v1/users")
@@ -67,12 +75,89 @@ public class UserResource {
                             value = UserExamples.USER_CREATED)
             )
     )
-    public Response create(CreateUserRequestDto request) {
+    public Response create(@NotNull @Valid CreateUserRequestDto request) {
         User user = this.userController.createUser(request);
 
         return Response.status(Response.Status.CREATED)
                 .entity(new UserResponseDto(user))
                 .build();
+    }
+
+    @POST
+    @Path("/{userId}/email/verification/send")
+    @RolesAllowed({"APPLICATION", "USER"})
+    @Operation(
+            summary = "Send user email verification",
+            description = "Generates a verification token and sends an email to the user email."
+    )
+    @RequestBody(
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Send email verification",
+                            value = UserExamples.SEND_EMAIL_VERIFICATION)
+            )
+    )
+    @APIResponse(responseCode = "204", description = "Verification email sent successfully")
+    public Response sendEmailVerification(@PathParam(RequestParams.USER_ID) String userId,
+                                          @NotNull @Valid SendEmailVerificationRequestDto request) {
+        this.userController.sendEmailVerification(userId, request.email());
+        return Response.noContent().build();
+    }
+
+    @GET
+    @Path("/email/verify")
+    @PermitAll
+    @Operation(
+            summary = "Verify user email",
+            description = "Confirms the user email with a token received by email."
+    )
+    @APIResponse(responseCode = "204", description = "Email verified successfully")
+    public Response verifyEmail(@QueryParam(RequestParams.TOKEN) @NotBlank String token) {
+        this.userController.verifyEmail(token);
+        return Response.noContent().build();
+    }
+
+    @POST
+    @Path("/password/forgot")
+    @PermitAll
+    @Operation(
+            summary = "Request password reset",
+            description = "Sends a password reset email to the given user email."
+    )
+    @RequestBody(
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Forgot password",
+                            value = UserExamples.FORGOT_PASSWORD)
+            )
+    )
+    @APIResponse(responseCode = "204", description = "Password reset email sent if the account exists")
+    public Response forgotPassword(@NotNull @Valid ForgotPasswordRequestDto request) {
+        this.userController.forgotPassword(request.email(), request.appId());
+        return Response.noContent().build();
+    }
+
+    @POST
+    @Path("/password/reset")
+    @PermitAll
+    @Operation(
+            summary = "Reset user password",
+            description = "Resets the user password using a valid reset token."
+    )
+    @RequestBody(
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Reset password",
+                            value = UserExamples.RESET_PASSWORD)
+            )
+    )
+    @APIResponse(responseCode = "204", description = "Password reset successfully")
+    public Response resetPassword(@NotNull @Valid ResetPasswordRequestDto request) {
+        this.userController.resetPassword(request.token(), request.newPassword());
+        return Response.noContent().build();
     }
 
     @PATCH

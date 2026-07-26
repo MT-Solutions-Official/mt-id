@@ -5,6 +5,7 @@ public class RequestParams {
     public static final String API_KEY = "apiKey";
     public static final String API_SECRET = "apiSecret";
     public static final String USER_ID = "userId";
+    public static final String OWNER_ID = "ownerId";
     public static final String USER_ROLE_ID = "userRoleId";
     public static final String APP_ID = "appId";
     public static final String IMAGE_TYPE = "imageType";
@@ -16,7 +17,7 @@ public class RequestParams {
     public static final String RW = "rw";
     public static final String COMPLEMENT = "complement";
     public static final String ADDRESS_INDEX = "addressIndex";
+    public static final String TOKEN = "token";
 
-
-    private RequestParams(){}
+    private RequestParams() {}
 }

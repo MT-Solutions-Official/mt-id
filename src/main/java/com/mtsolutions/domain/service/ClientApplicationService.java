@@ -2,7 +2,6 @@ package com.mtsolutions.domain.service;
 
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
-import com.mtsolutions.application.exception.OwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
@@ -11,6 +10,7 @@ import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.model.ClientApplicationSecretResult;
+import com.mtsolutions.domain.model.EmailSettings;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
@@ -43,10 +43,6 @@ public class ClientApplicationService {
 
         this.validateOwnerAccess(request.ownerId(), null);
 
-        if (Boolean.FALSE.equals(this.ownerService.existsOwnerById(request.ownerId()))) {
-            throw new OwnerNotFoundException();
-        }
-
         Owner owner = this.ownerService.findOwnerById(request.ownerId());
         String apiKey = this.keyGeneratorUtils.generateApiKey();
         String apiSecret = this.keyGeneratorUtils.generateApiSecret();
@@ -56,6 +52,8 @@ public class ClientApplicationService {
                 .owners(new ArrayList<>(List.of(owner)))
                 .name(request.name())
                 .description(request.description())
+                .logoUrl(request.logoUrl())
+                .emailSettings(mapEmailSettings(request.emailSettings()))
                 .apiKey(apiKey)
                 .apiSecret(hashedApiSecret)
                 .jwtExpirationInMinutes(request.jwtExpirationInMinutes())
@@ -123,6 +121,22 @@ public class ClientApplicationService {
 
         log.info("Client application secret rotated for ID: {}", clientApplication.getAppId());
         return new ClientApplicationSecretResult(clientApplication, apiSecret);
+    }
+
+    private EmailSettings mapEmailSettings(com.mtsolutions.domain.dto.request.EmailSettingsRequestDto request) {
+        if (request == null) {
+            return null;
+        }
+
+        return EmailSettings.builder()
+                .fromEmail(request.fromEmail())
+                .fromName(request.fromName())
+                .replyTo(request.replyTo())
+                .supportEmail(request.supportEmail())
+                .supportUrl(request.supportUrl())
+                .verificationRedirectUrl(request.verificationRedirectUrl())
+                .passwordResetRedirectUrl(request.passwordResetRedirectUrl())
+                .build();
     }
 
     private void validateOwnerAccess(String ownerId, ClientApplication clientApplication) {

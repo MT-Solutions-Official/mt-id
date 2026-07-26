@@ -52,4 +52,25 @@ public class OwnerExamples {
               "active": true
             }
             """;
+
+    public static final String SEND_EMAIL_VERIFICATION = """
+            {
+              "email": "thiago@mtsolutions.com"
+            }
+            """;
+
+    public static final String FORGOT_PASSWORD = """
+            {
+              "email": "thiago@mtsolutions.com"
+            }
+            """;
+
+    public static final String RESET_PASSWORD = """
+            {
+              "token": "f8b9d13f-c980-4efb-a7ef-c7ecf4cf4d10",
+              "newPassword": "StrongPassword123!"
+            }
+            """;
+
+    private OwnerExamples() {}
 }
