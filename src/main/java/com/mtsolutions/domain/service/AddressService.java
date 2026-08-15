@@ -9,6 +9,7 @@ import com.mtsolutions.application.client.zippopotam.ZippopotamClient;
 import com.mtsolutions.application.client.zippopotam.ZippopotamPlaceDto;
 import com.mtsolutions.application.client.zippopotam.ZippopotamResponseDto;
 import com.mtsolutions.application.exception.*;
+import com.mtsolutions.application.common.ClientRequestContext;
 import com.mtsolutions.domain.constant.Country;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.model.Address;
@@ -16,7 +17,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+
+import java.time.Duration;
 
 @ApplicationScoped
 @Slf4j
@@ -25,17 +29,33 @@ public class AddressService {
     private final ViaCepClient viaCepClient;
     private final KodePosClient kodePosClient;
     private final ZippopotamClient zippopotamClient;
+    private final RequestThrottleService requestThrottleService;
+    private final ClientRequestContext clientRequestContext;
+
+    @ConfigProperty(name = "app.mt.id.throttle.address-lookup.max-attempts")
+    Integer lookupMaxAttempts;
+
+    @ConfigProperty(name = "app.mt.id.throttle.address-lookup.window.seconds")
+    Integer lookupWindowSeconds;
+
+    @ConfigProperty(name = "app.mt.id.throttle.address-lookup.min-interval.seconds")
+    Integer lookupMinIntervalSeconds;
 
     public AddressService(@RestClient ViaCepClient viaCepClient,
                           @RestClient KodePosClient kodePosClient,
-                          @RestClient ZippopotamClient zippopotamClient) {
+                          @RestClient ZippopotamClient zippopotamClient,
+                          RequestThrottleService requestThrottleService,
+                          ClientRequestContext clientRequestContext) {
         this.viaCepClient = viaCepClient;
         this.kodePosClient = kodePosClient;
         this.zippopotamClient = zippopotamClient;
+        this.requestThrottleService = requestThrottleService;
+        this.clientRequestContext = clientRequestContext;
     }
 
     // BRAZILIAN ADDRESS
     public Address getBrazilianAddressFromZipcode(String zipCode, String number, String complement) {
+        this.ensureLookupNotThrottled();
         log.info("Fetching address from ViaCEP for CEP: {}", zipCode);
         try {
             ViaCepResponseDto response = this.viaCepClient.getAddress(zipCode);
@@ -65,6 +85,7 @@ public class AddressService {
     // INDONESIAN ADDRESS
     public Address getIndonesianAddressFromZipcode(String zipCode, String street, String number,
                                                    String rt, String rw, String complement) {
+        this.ensureLookupNotThrottled();
         log.info("Fetching address from KodePos for ZIP: {}", zipCode);
         try {
             KodePosResponseDto response = this.kodePosClient.getAddress(zipCode);
@@ -96,12 +117,14 @@ public class AddressService {
 
     // AMERICAN ADDRESS
     public Address getAmericanAddressFromZipcode(String zipCode, String street, String number, String complement) {
+        this.ensureLookupNotThrottled();
         log.info("Fetching address from Zippopotam for US ZIP: {}", zipCode);
         return getZippopotamAddress("us", zipCode, street, number, complement);
     }
 
     // PORTUGUESE ADDRESS
     public Address getPortugueseAddressFromZipcode(String zipCode, String street, String number, String complement) {
+        this.ensureLookupNotThrottled();
         log.info("Fetching address from Zippopotam for PT ZIP: {}", zipCode);
         return getZippopotamAddress("pt", zipCode, street, number, complement);
     }
@@ -161,6 +184,21 @@ public class AddressService {
                 .kelurahan(trimToNull(addressRequest.kelurahan()))
                 .kecamatan(trimToNull(addressRequest.kecamatan()))
                 .build();
+    }
+
+    private void ensureLookupNotThrottled() {
+        int maxAttempts = this.lookupMaxAttempts != null && this.lookupMaxAttempts > 0 ? this.lookupMaxAttempts : 30;
+        int windowSeconds = this.lookupWindowSeconds != null && this.lookupWindowSeconds > 0 ? this.lookupWindowSeconds : 60;
+        int minIntervalSeconds = this.lookupMinIntervalSeconds != null && this.lookupMinIntervalSeconds > 0
+                ? this.lookupMinIntervalSeconds : 0;
+        if (this.requestThrottleService.shouldThrottle(
+                "address-lookup",
+                this.clientRequestContext.clientIp(),
+                maxAttempts,
+                Duration.ofSeconds(windowSeconds),
+                Duration.ofSeconds(minIntervalSeconds))) {
+            throw new TooManyRequestsException();
+        }
     }
 
     private String requireField(String fieldName, String value) {

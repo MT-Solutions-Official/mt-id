@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+    <title>{title}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef1f6;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{primaryMessage}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f6;padding:32px 12px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px;">
+                <tr>
+                    <td style="padding:0 0 20px;text-align:center;">
+                        {#if logoUrl}
+                        <img src="{logoUrl}" alt="{appName}" style="max-height:40px;max-width:180px;object-fit:contain;display:inline-block;"/>
+                        {#else}
+                        <div style="font-size:18px;font-weight:700;letter-spacing:.04em;color:#0f172a;">{appName}</div>
+                        {/if}
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.08);">
+                            <tr>
+                                <td style="height:6px;background:{accentColor};font-size:0;line-height:0;">&nbsp;</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:36px 36px 12px;">
+                                    {#if badgeText}
+                                    <div style="display:inline-block;padding:6px 10px;border-radius:999px;background:#f8fafc;color:{accentColor};font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">{badgeText}</div>
+                                    {/if}
+                                    <h1 style="margin:16px 0 0;font-size:28px;line-height:1.25;letter-spacing:-.03em;color:#0f172a;">{title}</h1>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 36px 8px;">
+                                    <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#334155;">Olá {recipientName},</p>
+                                    <p style="margin:0 0 14px;font-size:16px;line-height:1.7;color:#334155;">{primaryMessage}</p>
+                                    <p style="margin:0;font-size:15px;line-height:1.7;color:#64748b;">{secondaryMessage}</p>
+                                </td>
+                            </tr>
+                            {#if changedAt}
+                            <tr>
+                                <td style="padding:8px 36px 0;">
+                                    <div style="padding:12px 14px;border-radius:12px;background:#f8fafc;color:#475569;font-size:13px;">Alteração registrada em <strong style="color:#0f172a;">{changedAt}</strong></div>
+                                </td>
+                            </tr>
+                            {/if}
+                            {#if actionUrl}
+                            <tr>
+                                <td align="center" style="padding:28px 36px 12px;">
+                                    <a href="{actionUrl}" style="display:inline-block;background:{accentColor};color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px;letter-spacing:.01em;">{actionText}</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:0 36px 28px;">
+                                    <p style="margin:0;font-size:12px;line-height:1.7;color:#94a3b8;word-break:break-all;">Se o botão não funcionar, copie e cole este link no navegador:<br/><a href="{actionUrl}" style="color:{accentColor};text-decoration:none;">{actionUrl}</a></p>
+                                </td>
+                            </tr>
+                            {/if}
+                            <tr>
+                                <td style="padding:20px 36px 32px;border-top:1px solid #e2e8f0;">
+                                    <p style="margin:0;font-size:12px;line-height:1.7;color:#94a3b8;">Este é um e-mail automático de {appName}. Não responda esta mensagem.</p>
+                                    {#if supportEmail}
+                                    <p style="margin:8px 0 0;font-size:12px;line-height:1.7;color:#64748b;">Suporte: <a href="mailto:{supportEmail}" style="color:{accentColor};text-decoration:none;">{supportEmail}</a></p>
+                                    {/if}
+                                    {#if supportUrl}
+                                    <p style="margin:4px 0 0;font-size:12px;line-height:1.7;color:#64748b;"><a href="{supportUrl}" style="color:{accentColor};text-decoration:none;">{supportUrl}</a></p>
+                                    {/if}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

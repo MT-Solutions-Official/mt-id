@@ -5,18 +5,7 @@ quarkus:
   http:
     port: 8081
     cors:
-      enabled: true
-      origins:
-        - ${APP_MT_ID_CORS_ORIGIN:http://localhost:3000}
-      methods:
-        - GET
-        - POST
-        - PUT
-        - DELETE
-      headers:
-        - Content-Type
-        - Authorization
-        - Accept
+      enabled: false
 
   mongodb:
     connection-string: ${APP_MT_ID_MONGODB_ENDPOINT:mongodb://localhost:27017/}
@@ -61,6 +50,10 @@ quarkus:
       scope: jakarta.inject.Singleton
       connect-timeout: 10000
       read-timeout: 10000
+    pwned-passwords:
+      url: ${APP_PWNED_PASSWORDS_URL:https://api.pwnedpasswords.com}
+      connect-timeout: 3000
+      read-timeout: 3000
 
 mp:
   jwt:
@@ -84,6 +77,19 @@ app:
   mt:
     id:
       timezone: ${APP_MT_ID_TIMEZONE:America/Sao_Paulo}
+      frontend:
+        base-url: ${APP_MT_ID_FRONTEND_BASE_URL:http://localhost:3000}
+      cors:
+        platform-origin: ${APP_MT_ID_CORS_ORIGIN:http://localhost:3000}
+        cache:
+          ttl:
+            seconds: ${APP_MT_ID_CORS_CACHE_TTL_SECONDS:60}
+      http:
+        trust-forwarded-headers: ${APP_MT_ID_TRUST_FORWARDED_HEADERS:true}
+      account-status:
+        cache:
+          ttl:
+            seconds: ${APP_MT_ID_ACCOUNT_STATUS_CACHE_TTL_SECONDS:30}
       base-url: ${APP_MT_ID_BASE_URL:http://localhost:8081}
       email:
         verification:
@@ -108,14 +114,49 @@ app:
             seconds: ${APP_MT_ID_THROTTLE_FORGOT_PASSWORD_WINDOW_SECONDS:3600}
           min-interval:
             seconds: ${APP_MT_ID_THROTTLE_FORGOT_PASSWORD_MIN_INTERVAL_SECONDS:30}
+        login:
+          max-attempts: ${APP_MT_ID_THROTTLE_LOGIN_MAX_ATTEMPTS:10}
+          window:
+            seconds: ${APP_MT_ID_THROTTLE_LOGIN_WINDOW_SECONDS:900}
+          min-interval:
+            seconds: ${APP_MT_ID_THROTTLE_LOGIN_MIN_INTERVAL_SECONDS:1}
+          ip:
+            max-attempts: ${APP_MT_ID_THROTTLE_LOGIN_IP_MAX_ATTEMPTS:30}
+            window:
+              seconds: ${APP_MT_ID_THROTTLE_LOGIN_IP_WINDOW_SECONDS:900}
+            min-interval:
+              seconds: ${APP_MT_ID_THROTTLE_LOGIN_IP_MIN_INTERVAL_SECONDS:1}
+        application-token:
+          max-attempts: ${APP_MT_ID_THROTTLE_APPLICATION_TOKEN_MAX_ATTEMPTS:10}
+          window:
+            seconds: ${APP_MT_ID_THROTTLE_APPLICATION_TOKEN_WINDOW_SECONDS:900}
+          min-interval:
+            seconds: ${APP_MT_ID_THROTTLE_APPLICATION_TOKEN_MIN_INTERVAL_SECONDS:1}
+          ip:
+            max-attempts: ${APP_MT_ID_THROTTLE_APPLICATION_TOKEN_IP_MAX_ATTEMPTS:30}
+            window:
+              seconds: ${APP_MT_ID_THROTTLE_APPLICATION_TOKEN_IP_WINDOW_SECONDS:900}
+            min-interval:
+              seconds: ${APP_MT_ID_THROTTLE_APPLICATION_TOKEN_IP_MIN_INTERVAL_SECONDS:1}
+        address-lookup:
+          max-attempts: ${APP_MT_ID_THROTTLE_ADDRESS_LOOKUP_MAX_ATTEMPTS:30}
+          window:
+            seconds: ${APP_MT_ID_THROTTLE_ADDRESS_LOOKUP_WINDOW_SECONDS:60}
+          min-interval:
+            seconds: ${APP_MT_ID_THROTTLE_ADDRESS_LOOKUP_MIN_INTERVAL_SECONDS:0}
+      password:
+        pwned:
+          enabled: ${APP_MT_ID_PASSWORD_PWNED_ENABLED:true}
+          fail-open: ${APP_MT_ID_PASSWORD_PWNED_FAIL_OPEN:true}
       google:
+        jwks-url: ${APP_MT_ID_GOOGLE_JWKS_URL:https://www.googleapis.com/oauth2/v3/certs}
         owner:
           audience: ${APP_MT_ID_GOOGLE_OWNER_AUDIENCE:298569807540-sg0r9rndj2i3n2sujr1sobp9nr4in59c.apps.googleusercontent.com}
         user:
           audience: ${APP_MT_ID_GOOGLE_USER_AUDIENCE:298569807540-sg0r9rndj2i3n2sujr1sobp9nr4in59c.apps.googleusercontent.com}
       token:
         expiration:
-          hours: ${APP_MT_ID_JWT_TOKEN_EXPIRATION_HOURS:24}
+          minutes: ${APP_MT_ID_JWT_TOKEN_EXPIRATION_MINUTES:15}
       refresh-token:
         expiration:
           days: ${APP_MT_ID_JWT_REFRESH_TOKEN_EXPIRATION_DAYS:30}

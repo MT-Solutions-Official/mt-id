@@ -10,7 +10,8 @@ public record EmailSettingsRequestDto(
         String supportEmail,
         String supportUrl,
         String verificationRedirectUrl,
-        String passwordResetRedirectUrl
+        String passwordResetRedirectUrl,
+        String loginUrl
 ) {
 }
 

@@ -1,16 +1,23 @@
 package com.mtsolutions.domain.service;
 
+import com.mongodb.MongoException;
+import com.mtsolutions.application.cache.AccountStatusCache;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.constant.CloudinaryFolder;
 import com.mtsolutions.application.service.CloudinaryService;
+import com.mtsolutions.application.exception.EmailAlreadyExistsException;
 import com.mtsolutions.application.exception.RequiredUserFieldMissingException;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
+import com.mtsolutions.application.exception.UsernameAlreadyExistsException;
+import com.mtsolutions.application.utils.AccountStatusUtils;
 import com.mtsolutions.application.utils.DateUtils;
+import com.mtsolutions.application.utils.NormalizeUtils;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.constant.UserRequiredField;
 import com.mtsolutions.domain.constant.ImageType;
 import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
+import com.mtsolutions.domain.dto.request.GenerateUserGoogleTokenRequestDto;
 import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
 import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
@@ -30,9 +37,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 
 @ApplicationScoped
@@ -45,16 +54,32 @@ public class UserService {
     private final AddressService addressService;
     private final CloudinaryService cloudinaryService;
     private final BcryptService bcryptService;
+    private final PasswordPolicyService passwordPolicyService;
+    private final UserRefreshTokenService userRefreshTokenService;
+    private final AccountStatusCache accountStatusCache;
     private final DateUtils dateUtils;
     private final ContextComponent contextComponent;
 
-    public UserService(UserRepository userRepository, ClientApplicationService clientApplicationService, UserRoleService userRoleService, AddressService addressService, CloudinaryService cloudinaryService, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
+    public UserService(UserRepository userRepository,
+                       ClientApplicationService clientApplicationService,
+                       UserRoleService userRoleService,
+                       AddressService addressService,
+                       CloudinaryService cloudinaryService,
+                       BcryptService bcryptService,
+                       PasswordPolicyService passwordPolicyService,
+                       UserRefreshTokenService userRefreshTokenService,
+                       AccountStatusCache accountStatusCache,
+                       DateUtils dateUtils,
+                       ContextComponent contextComponent) {
         this.userRepository = userRepository;
         this.clientApplicationService = clientApplicationService;
         this.userRoleService = userRoleService;
         this.addressService = addressService;
         this.cloudinaryService = cloudinaryService;
         this.bcryptService = bcryptService;
+        this.passwordPolicyService = passwordPolicyService;
+        this.userRefreshTokenService = userRefreshTokenService;
+        this.accountStatusCache = accountStatusCache;
         this.dateUtils = dateUtils;
         this.contextComponent = contextComponent;
     }
@@ -65,12 +90,13 @@ public class UserService {
         this.validateApplicationAccess();
 
         ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(appId);
-        this.validateRequiredFields(request, clientApplication.getRequiredUserFields());
+        this.validateRequiredFields(request, clientApplication.getRequiredUserFields(), false);
+        this.validateUniqueUserIdentifiers(appId, request);
 
         User user = User.builder()
                 .appId(appId)
                 .name(request.name())
-                .username(request.username())
+                .username(NormalizeUtils.trimToNull(request.username()))
                 .primaryEmail(this.resolvePrimaryEmail(request.email()))
                 .emails(this.buildEmails(request.email()))
                 .password(this.buildPassword(request.password()))
@@ -83,9 +109,106 @@ public class UserService {
                 .active(true)
                 .build();
 
-        this.userRepository.persist(user);
+        this.persistUser(user);
         log.info("User created with ID: {}", user.getUserId());
 
+        return user;
+    }
+
+    public User provisionGoogleUser(String appId, String email, String googleName, GenerateUserGoogleTokenRequestDto request) {
+        ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(appId);
+        if (Boolean.FALSE.equals(clientApplication.getActive())) {
+            throw new ApplicationForbiddenException();
+        }
+        if (this.userRepository.existsByAppIdAndEmail(appId, email)) {
+            throw new EmailAlreadyExistsException();
+        }
+
+        String name = this.hasText(request != null ? request.name() : null)
+                ? request.name().trim()
+                : (this.hasText(googleName) ? googleName.trim() : email);
+        String username = request != null ? NormalizeUtils.trimToNull(request.username()) : null;
+        CreateUserRequestDto profile = new CreateUserRequestDto(
+                name,
+                username,
+                List.of(email),
+                null,
+                request != null ? request.phones() : null,
+                request != null ? request.document() : null,
+                request != null ? request.maritalStatus() : null,
+                null
+        );
+        this.validateRequiredFields(profile, clientApplication.getRequiredUserFields(), true);
+        this.validateUniqueUserIdentifiers(appId, profile);
+
+        Email googleEmail = Email.builder()
+                .email(email)
+                .primary(true)
+                .verified(true)
+                .build();
+
+        User user = User.builder()
+                .appId(appId)
+                .name(name)
+                .username(username)
+                .primaryEmail(email)
+                .emails(new ArrayList<>(List.of(googleEmail)))
+                .phones(this.buildPhones(profile.phones()))
+                .document(this.fillDocumentFields(profile.document()))
+                .maritalStatus(profile.maritalStatus())
+                .createdAt(this.dateUtils.now())
+                .updatedAt(this.dateUtils.now())
+                .active(true)
+                .build();
+
+        this.persistUser(user);
+        log.info("Google user provisioned with ID: {}", user.getUserId());
+        return user;
+    }
+
+    public User findCurrentUser() {
+        if (!this.contextComponent.hasRole("USER")) {
+            throw new ApplicationForbiddenException();
+        }
+        String userId = this.contextComponent.getAuthenticatedUserIdOrNull();
+        if (userId == null || userId.isBlank()) {
+            throw new ApplicationForbiddenException();
+        }
+        return this.findUserById(userId);
+    }
+
+    public User findUserById(String userId) {
+        User user = this.userRepository.findUserById(userId);
+        this.validateAppOrSelfAccess(user);
+        return user;
+    }
+
+    public User disableUser(String userId) {
+        this.validateApplicationAccess();
+        User user = this.userRepository.findUserById(userId);
+        this.validateAppOrSelfAccess(user);
+        if (!AccountStatusUtils.isDisabled(user)) {
+            user.setActive(false);
+            user.setDisabledAt(this.dateUtils.now());
+            user.setUpdatedAt(this.dateUtils.now());
+            this.userRepository.persistOrUpdate(user);
+            this.userRefreshTokenService.revokeAllForUser(user.getUserId(), user.getAppId());
+            this.accountStatusCache.putUserDisabled(user.getUserId(), true);
+            log.info("User disabled with ID: {}", userId);
+        }
+        return user;
+    }
+
+    public User enableUser(String userId) {
+        this.validateApplicationAccess();
+        User user = this.userRepository.findUserById(userId);
+        this.validateAppOrSelfAccess(user);
+        user.setActive(true);
+        user.setDisabledAt(null);
+        user.setUpdatedAt(this.dateUtils.now());
+        this.userRepository.persistOrUpdate(user);
+        this.accountStatusCache.putUserDisabled(user.getUserId(), false);
+        log.info("User enabled with ID: {}", userId);
         return user;
     }
 
@@ -191,25 +314,13 @@ public class UserService {
     }
 
     private void validateApplicationAccess() {
-        if (!"APPLICATION".equals(this.contextComponent.getRole())) {
+        if (!this.contextComponent.hasRole("APPLICATION")) {
             throw new ApplicationForbiddenException();
         }
     }
 
     private void validateAppOrSelfAccess(User user) {
-        String authenticatedAppId = this.contextComponent.getAuthenticatedAppIdOrNull();
-        if ("APPLICATION".equals(this.contextComponent.getRole())
-                && authenticatedAppId != null
-                && authenticatedAppId.equals(user.getAppId())) {
-            return;
-        }
-
-        String authenticatedUserId = this.contextComponent.getAuthenticatedUserIdOrNull();
-        if (authenticatedUserId != null && authenticatedUserId.equals(user.getUserId())) {
-            return;
-        }
-
-        throw new ApplicationForbiddenException();
+        this.contextComponent.validateAppOrSelfAccess(user.getAppId(), user.getUserId());
     }
 
     private void validateImageRequest(UploadUserImageRequestDto request) {
@@ -248,7 +359,48 @@ public class UserService {
     }
 
 
-    private void validateRequiredFields(CreateUserRequestDto request, List<UserRequiredField> requiredFields) {
+    private void persistUser(User user) {
+        try {
+            this.userRepository.persist(user);
+        } catch (MongoException e) {
+            if (e.getCode() == 11000) {
+                String message = e.getMessage() != null ? e.getMessage() : "";
+                if (message.contains("username")) {
+                    throw new UsernameAlreadyExistsException();
+                }
+                throw new EmailAlreadyExistsException();
+            }
+            throw e;
+        }
+    }
+
+    private void validateUniqueUserIdentifiers(String appId, CreateUserRequestDto request) {
+        List<String> normalizedEmails = this.normalizeEmails(request.email());
+        Set<String> uniqueEmails = new HashSet<>();
+        for (String email : normalizedEmails) {
+            if (!uniqueEmails.add(email) || this.userRepository.existsByAppIdAndEmail(appId, email)) {
+                throw new EmailAlreadyExistsException();
+            }
+        }
+
+        String username = NormalizeUtils.trimToNull(request.username());
+        if (username != null && this.userRepository.existsByAppIdAndUsername(appId, username)) {
+            throw new UsernameAlreadyExistsException();
+        }
+    }
+
+    private List<String> normalizeEmails(List<String> emails) {
+        if (emails == null || emails.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        return emails.stream()
+                .map(NormalizeUtils::normalizeEmail)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private void validateRequiredFields(CreateUserRequestDto request, List<UserRequiredField> requiredFields, boolean googleSignup) {
         if (requiredFields == null || requiredFields.isEmpty()) {
             return;
         }
@@ -258,7 +410,7 @@ public class UserService {
                 case NAME -> !this.hasText(request.name());
                 case USERNAME -> !this.hasText(request.username());
                 case EMAIL -> request.email() == null || request.email().isEmpty() || request.email().stream().noneMatch(this::hasText);
-                case PASSWORD -> !this.hasText(request.password());
+                case PASSWORD -> !googleSignup && !this.hasText(request.password());
                 case PHONE -> request.phones() == null || request.phones().isEmpty() || request.phones().stream()
                         .filter(Objects::nonNull)
                         .noneMatch(phone -> this.hasText(phone.getPhoneNumber()));
@@ -273,13 +425,13 @@ public class UserService {
     }
 
     private List<Email> buildEmails(List<String> emails) {
-        if (emails == null || emails.isEmpty()) {
+        List<String> normalizedEmails = this.normalizeEmails(emails);
+        if (normalizedEmails.isEmpty()) {
             return new ArrayList<>();
         }
 
         final boolean[] primaryAssigned = {false};
-        return emails.stream()
-                .filter(this::hasText)
+        return normalizedEmails.stream()
                 .map(email -> {
                     boolean isPrimary = !primaryAssigned[0];
                     primaryAssigned[0] = true;
@@ -294,12 +446,7 @@ public class UserService {
     }
 
     private String resolvePrimaryEmail(List<String> emails) {
-        if (emails == null) {
-            return null;
-        }
-
-        return emails.stream()
-                .filter(this::hasText)
+        return this.normalizeEmails(emails).stream()
                 .findFirst()
                 .orElse(null);
     }
@@ -323,6 +470,7 @@ public class UserService {
             return null;
         }
 
+        this.passwordPolicyService.validate(rawPassword);
         String encryptedPassword = this.bcryptService.encryptPassword(rawPassword);
         return Password.builder()
                 .password(encryptedPassword)

@@ -33,39 +33,18 @@ public class UserExamples {
               "emails": [
                 {
                   "email": "john.doe@example.com",
-                  "verificationToken": null,
-                  "verificationTokenExpiry": null,
+                  "primary": true,
                   "verified": false
                 }
               ],
-              "password": {
-                "password": "$2a$10$...",
-                "passwordResetToken": null,
-                "passwordResetTokenExpiry": null
-              },
               "phones": [
                 {
                   "phoneNumber": "+5511999999999",
-                  "verificationToken": null,
-                  "verificationTokenExpiry": null,
                   "verified": false
                 }
               ],
               "document": {
-                "cpf": "12345678900",
-                "rg": null,
-                "cnpj": null,
-                "cnh": null,
-                "nik": null,
-                "npwp": null,
-                "sim": null,
-                "ssn": null,
-                "ein": null,
-                "usDriverLicense": null,
-                "nif": null,
-                "niss": null,
-                "cc": null,
-                "passport": null
+                "cpf": "12345678900"
               },
               "maritalStatus": "SINGLE",
               "images": [],
@@ -73,7 +52,6 @@ public class UserExamples {
               "roleIds": ["admin"],
               "createdAt": "2026-07-03T18:10:00.000Z",
               "updatedAt": "2026-07-03T18:10:00.000Z",
-              "disabledAt": null,
               "active": true
             }
             """;
@@ -159,16 +137,13 @@ public class UserExamples {
               "emails": [
                 {
                   "email": "john.doe@example.com",
-                  "verificationToken": null,
-                  "verificationTokenExpiry": null,
+                  "primary": true,
                   "verified": false
                 }
               ],
               "phones": [
                 {
                   "phoneNumber": "+5511999999999",
-                  "verificationToken": null,
-                  "verificationTokenExpiry": null,
                   "verified": false
                 }
               ],

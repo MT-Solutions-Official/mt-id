@@ -1,9 +1,15 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.common.ClientRequestContext;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.client.google.GoogleTokenInfoResponseDto;
+import com.mtsolutions.application.exception.AccountDisabledException;
 import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
+import com.mtsolutions.application.exception.EmailNotVerifiedException;
+import com.mtsolutions.application.exception.TooManyRequestsException;
+import com.mtsolutions.application.utils.AccountStatusUtils;
 import com.mtsolutions.application.utils.DateUtils;
+import com.mtsolutions.application.utils.NormalizeUtils;
 import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.OwnerTokenResponseDto;
 import com.mtsolutions.domain.entity.Owner;
@@ -17,8 +23,8 @@ import java.util.UUID;
 @ApplicationScoped
 public class OwnerAuthService {
 
-    @ConfigProperty(name = "app.mt.id.token.expiration.hours")
-    Integer tokenExpirationInHours;
+    @ConfigProperty(name = "app.mt.id.token.expiration.minutes")
+    Integer tokenExpirationMinutes;
 
     @ConfigProperty(name = "app.mt.id.refresh-token.expiration.days")
     Integer refreshTokenExpirationInDays;
@@ -26,13 +32,33 @@ public class OwnerAuthService {
     @ConfigProperty(name = "app.mt.id.google.owner.audience")
     String googleOwnerAudience;
 
+    @ConfigProperty(name = "app.mt.id.throttle.login.max-attempts")
+    Integer loginMaxAttempts;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.window.seconds")
+    Integer loginWindowSeconds;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.min-interval.seconds")
+    Integer loginMinIntervalSeconds;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.ip.max-attempts")
+    Integer loginIpMaxAttempts;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.ip.window.seconds")
+    Integer loginIpWindowSeconds;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.ip.min-interval.seconds")
+    Integer loginIpMinIntervalSeconds;
+
     private final OwnerRepository ownerRepository;
     private final BcryptService bcryptService;
     private final JwtService jwtService;
     private final OwnerRefreshTokenService ownerRefreshTokenService;
     private final GoogleTokenVerificationService googleTokenVerificationService;
     private final ContextComponent contextComponent;
+    private final ClientRequestContext clientRequestContext;
     private final DateUtils dateUtils;
+    private final RequestThrottleService requestThrottleService;
 
     public OwnerAuthService(OwnerRepository ownerRepository,
                             BcryptService bcryptService,
@@ -40,48 +66,70 @@ public class OwnerAuthService {
                             OwnerRefreshTokenService ownerRefreshTokenService,
                             GoogleTokenVerificationService googleTokenVerificationService,
                             ContextComponent contextComponent,
-                            DateUtils dateUtils) {
+                            ClientRequestContext clientRequestContext,
+                            DateUtils dateUtils,
+                            RequestThrottleService requestThrottleService) {
         this.ownerRepository = ownerRepository;
         this.bcryptService = bcryptService;
         this.jwtService = jwtService;
         this.ownerRefreshTokenService = ownerRefreshTokenService;
         this.googleTokenVerificationService = googleTokenVerificationService;
         this.contextComponent = contextComponent;
+        this.clientRequestContext = clientRequestContext;
         this.dateUtils = dateUtils;
+        this.requestThrottleService = requestThrottleService;
     }
 
     public OwnerTokenResponseDto generateOwnerToken(String email, String password) {
-        String normalizedEmail = normalize(email);
+        String normalizedEmail = NormalizeUtils.normalizeEmail(email);
         if (normalizedEmail == null || password == null || password.isBlank()) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+
+        this.ensureLoginNotThrottled("owner-login", normalizedEmail);
+
+        try {
+            Owner owner = this.ownerRepository.findOwnerByEmail(normalizedEmail)
+                    .orElseThrow(ApplicationAuthenticationFailedException::new);
+
+            if (owner.getPassword() == null
+                    || owner.getPassword().getPassword() == null
+                    || !this.bcryptService.verifyPassword(password, owner.getPassword().getPassword())) {
+                throw new ApplicationAuthenticationFailedException();
+            }
+
+            this.ensureAccountEnabled(owner);
+            this.ensureEmailVerified(owner);
+
+            if (owner.getRole() == null) {
+                owner.setRole(OwnerRole.OWNER_VIEWER);
+                this.ownerRepository.persistOrUpdate(owner);
+            }
+
+            this.requestThrottleService.clear("owner-login", normalizedEmail);
+            return this.issueTokens(owner);
+        } catch (ApplicationAuthenticationFailedException e) {
+            this.recordLoginFailure("owner-login", normalizedEmail);
+            throw e;
+        }
+    }
+
+    public OwnerTokenResponseDto generateGoogleOwnerToken(String idToken, String nonce) {
+        this.ensureIpNotThrottled("owner-login-ip");
+        GoogleTokenInfoResponseDto googleTokenInfo = this.googleTokenVerificationService.verifyIdToken(
+                idToken,
+                this.googleOwnerAudience,
+                nonce
+        );
+
+        String normalizedEmail = NormalizeUtils.normalizeEmail(googleTokenInfo.getEmail());
+        if (normalizedEmail == null) {
             throw new ApplicationAuthenticationFailedException();
         }
 
         Owner owner = this.ownerRepository.findOwnerByEmail(normalizedEmail)
                 .orElseThrow(ApplicationAuthenticationFailedException::new);
-
-        if (Boolean.FALSE.equals(owner.getActive())
-                || owner.getPassword() == null
-                || owner.getPassword().getPassword() == null
-                || !this.bcryptService.verifyPassword(password, owner.getPassword().getPassword())) {
-            throw new ApplicationAuthenticationFailedException();
-        }
-
-        if (owner.getRole() == null) {
-            owner.setRole(OwnerRole.OWNER_VIEWER);
-            this.ownerRepository.persistOrUpdate(owner);
-        }
-
-        return this.issueTokens(owner);
-    }
-
-    public OwnerTokenResponseDto generateGoogleOwnerToken(String idToken) {
-        GoogleTokenInfoResponseDto googleTokenInfo = this.verifyGoogleIdToken(idToken);
-
-        Owner owner = this.ownerRepository.findOwnerByEmail(googleTokenInfo.getEmail())
-                .orElseThrow(ApplicationAuthenticationFailedException::new);
-        if (Boolean.FALSE.equals(owner.getActive())) {
-            throw new ApplicationAuthenticationFailedException();
-        }
+        this.ensureAccountEnabled(owner);
 
         this.syncGoogleVerifiedEmail(owner);
 
@@ -108,12 +156,12 @@ public class OwnerAuthService {
         }
 
         Owner owner = this.ownerRepository.findOwnerById(ownerId);
-        if (Boolean.FALSE.equals(owner.getActive())
-                || owner.getEmail() == null
+        if (owner.getEmail() == null
                 || owner.getEmail().getEmail() == null
                 || !email.equalsIgnoreCase(owner.getEmail().getEmail())) {
             throw new ApplicationAuthenticationFailedException();
         }
+        this.ensureAccountEnabled(owner);
 
         this.ownerRefreshTokenService.validateActiveRefreshToken(refreshTokenId, ownerId);
         this.ownerRefreshTokenService.revokeRefreshToken(refreshTokenId);
@@ -137,15 +185,63 @@ public class OwnerAuthService {
     }
 
     private OwnerTokenResponseDto issueTokens(Owner owner) {
-        Duration accessExpiration = Duration.ofHours(this.tokenExpirationInHours);
+        Duration accessExpiration = Duration.ofMinutes(this.resolveDefaultAccessMinutes());
         Duration refreshExpiration = Duration.ofDays(resolveRefreshTokenExpirationDays());
         String refreshTokenId = UUID.randomUUID().toString();
         this.ownerRefreshTokenService.registerRefreshToken(refreshTokenId, owner.getOwnerId(), refreshExpiration);
         return this.jwtService.generateOwnerToken(owner, refreshTokenId, accessExpiration, refreshExpiration);
     }
 
-    private GoogleTokenInfoResponseDto verifyGoogleIdToken(String idToken) {
-        return this.googleTokenVerificationService.verifyIdToken(idToken, this.googleOwnerAudience);
+    private void ensureEmailVerified(Owner owner) {
+        if (owner.getEmail() == null || !Boolean.TRUE.equals(owner.getEmail().getVerified())) {
+            throw new EmailNotVerifiedException();
+        }
+    }
+
+    private void ensureAccountEnabled(Owner owner) {
+        if (AccountStatusUtils.isDisabled(owner)) {
+            throw new AccountDisabledException();
+        }
+    }
+
+    private void ensureLoginNotThrottled(String action, String identifier) {
+        this.ensureIpNotThrottled("owner-login-ip");
+        if (this.requestThrottleService.isThrottled(
+                action,
+                identifier,
+                resolveLimit(this.loginMaxAttempts, 10),
+                Duration.ofSeconds(resolveLimit(this.loginWindowSeconds, 900)),
+                Duration.ofSeconds(resolveLimit(this.loginMinIntervalSeconds, 1)))) {
+            throw new TooManyRequestsException();
+        }
+    }
+
+    private void ensureIpNotThrottled(String action) {
+        if (this.requestThrottleService.isThrottled(
+                action,
+                this.clientRequestContext.clientIp(),
+                resolveLimit(this.loginIpMaxAttempts, 30),
+                Duration.ofSeconds(resolveLimit(this.loginIpWindowSeconds, 900)),
+                Duration.ofSeconds(resolveLimit(this.loginIpMinIntervalSeconds, 1)))) {
+            throw new TooManyRequestsException();
+        }
+    }
+
+    private void recordLoginFailure(String action, String identifier) {
+        this.requestThrottleService.recordAttempt(
+                action,
+                identifier,
+                Duration.ofSeconds(resolveLimit(this.loginWindowSeconds, 900))
+        );
+        this.requestThrottleService.recordAttempt(
+                "owner-login-ip",
+                this.clientRequestContext.clientIp(),
+                Duration.ofSeconds(resolveLimit(this.loginIpWindowSeconds, 900))
+        );
+    }
+
+    private int resolveLimit(Integer configuredValue, int fallback) {
+        return configuredValue != null && configuredValue > 0 ? configuredValue : fallback;
     }
 
     private void syncGoogleVerifiedEmail(Owner owner) {
@@ -168,7 +264,10 @@ public class OwnerAuthService {
         return 30L;
     }
 
-    private String normalize(String value) {
-        return value != null ? value.trim() : null;
+    private long resolveDefaultAccessMinutes() {
+        if (this.tokenExpirationMinutes != null && this.tokenExpirationMinutes > 0) {
+            return this.tokenExpirationMinutes;
+        }
+        return 15L;
     }
 }

@@ -10,6 +10,7 @@ import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.UserRole;
 import com.mtsolutions.domain.repository.UserRoleRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -22,6 +23,10 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 @Slf4j
 public class UserRoleService {
+
+    private static final Set<String> RESERVED_ROLE_NAMES = Set.of(
+            "USER", "APPLICATION", "REFRESH_TOKEN", "OWNER_WRITER", "OWNER_VIEWER"
+    );
 
     private final UserRoleRepository userRoleRepository;
     private final ClientApplicationService clientApplicationService;
@@ -122,8 +127,22 @@ public class UserRoleService {
                 .toList();
     }
 
+    public List<String> resolveRoleNamesByIds(List<String> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return this.userRoleRepository.findByIds(roleIds).stream()
+                .map(UserRole::getRoleName)
+                .filter(roleName -> roleName != null && !roleName.isBlank())
+                .toList();
+    }
+
     private String normalizeRoleName(String roleName) {
-        return roleName.trim().toUpperCase(Locale.ROOT);
+        String normalized = roleName.trim().toUpperCase(Locale.ROOT);
+        if (RESERVED_ROLE_NAMES.contains(normalized)) {
+            throw new BadRequestException("Role name is reserved.");
+        }
+        return normalized;
     }
 
     private void validateOwnerAccessToApp(String appId) {

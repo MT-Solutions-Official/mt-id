@@ -2,12 +2,14 @@ package com.mtsolutions.application.resource.rest;
 
 import com.mtsolutions.application.resource.rest.examples.ApplicationAuthExamples;
 import com.mtsolutions.domain.controller.UserAuthController;
-import com.mtsolutions.domain.dto.request.GenerateGoogleTokenRequestDto;
+import com.mtsolutions.domain.dto.request.GenerateUserGoogleTokenRequestDto;
 import com.mtsolutions.domain.dto.request.GenerateUserTokenRequestDto;
 import com.mtsolutions.domain.dto.response.UserTokenResponseDto;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
@@ -35,7 +37,7 @@ public class UserAuthResource {
     @PermitAll
     @Operation(
             summary = "Generate user token",
-            description = "Authenticates a user using email and password and returns MT-ID JWT tokens."
+            description = "Authenticates a user using email, password and appId and returns MT-ID JWT tokens."
     )
     @RequestBody(
             content = @Content(
@@ -55,8 +57,8 @@ public class UserAuthResource {
                             value = ApplicationAuthExamples.USER_TOKEN_RESPONSE)
             )
     )
-    public Response generateUserToken(GenerateUserTokenRequestDto request) {
-        UserTokenResponseDto response = this.userAuthController.generateUserToken(request.email(), request.password());
+    public Response generateUserToken(@NotNull @Valid GenerateUserTokenRequestDto request) {
+        UserTokenResponseDto response = this.userAuthController.generateUserToken(request.email(), request.password(), request.appId());
         return Response.status(Response.Status.OK)
                 .entity(response)
                 .build();
@@ -67,14 +69,14 @@ public class UserAuthResource {
     @PermitAll
     @Operation(
             summary = "Generate user token with Google",
-            description = "Authenticates a user using a Google ID token and returns MT-ID JWT tokens."
+            description = "Authenticates a user using a Google ID token and appId. New users must satisfy the app requiredUserFields except password. Browser clients should send the appId header so CORS is bound to that application."
     )
     @RequestBody(
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON,
                     examples = @ExampleObject(
                             name = "User Google token request",
-                            value = ApplicationAuthExamples.GOOGLE_TOKEN_REQUEST)
+                            value = ApplicationAuthExamples.USER_GOOGLE_TOKEN_REQUEST)
             )
     )
     @APIResponse(
@@ -87,8 +89,8 @@ public class UserAuthResource {
                             value = ApplicationAuthExamples.USER_TOKEN_RESPONSE)
             )
     )
-    public Response generateGoogleUserToken(GenerateGoogleTokenRequestDto request) {
-        UserTokenResponseDto response = this.userAuthController.generateGoogleUserToken(request.idToken());
+    public Response generateGoogleUserToken(@NotNull @Valid GenerateUserGoogleTokenRequestDto request) {
+        UserTokenResponseDto response = this.userAuthController.generateGoogleUserToken(request);
         return Response.status(Response.Status.OK)
                 .entity(response)
                 .build();

@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.bson.types.ObjectId;
 
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class ClientApplicationRepository implements PanacheMongoRepositoryBase<ClientApplication, String> {
@@ -20,5 +21,14 @@ public class ClientApplicationRepository implements PanacheMongoRepositoryBase<C
 
     public Optional<ClientApplication> findClientApplicationByApiKey(String apiKey) {
         return find("apiKey", apiKey).firstResultOptional();
+    }
+
+    public boolean existsByAllowedOrigin(String origin) {
+        if (origin == null || origin.isBlank()) {
+            return false;
+        }
+        String withoutSlash = origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin;
+        return count("{allowedOrigins: {$regex: ?1, $options: 'i'}, active: {$ne: false}}",
+                "^" + Pattern.quote(withoutSlash) + "/?$") > 0;
     }
 }

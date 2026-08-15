@@ -18,5 +18,6 @@ public class EmailSettings {
     private String supportUrl;
     private String verificationRedirectUrl;
     private String passwordResetRedirectUrl;
+    private String loginUrl;
 }
 

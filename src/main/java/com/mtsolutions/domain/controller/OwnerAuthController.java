@@ -17,8 +17,8 @@ public class OwnerAuthController {
         return this.ownerAuthService.generateOwnerToken(email, password);
     }
 
-    public OwnerTokenResponseDto generateGoogleOwnerToken(String idToken) {
-        return this.ownerAuthService.generateGoogleOwnerToken(idToken);
+    public OwnerTokenResponseDto generateGoogleOwnerToken(String idToken, String nonce) {
+        return this.ownerAuthService.generateGoogleOwnerToken(idToken, nonce);
     }
 
     public OwnerTokenResponseDto refreshOwnerToken() {

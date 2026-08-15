@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 @RegisterForReflection
 public record ForgotPasswordRequestDto(
         @NotBlank(message = "Email is required") String email,
-        String appId
+        @NotBlank(message = "App ID is required") String appId
 ) {
 }
-

@@ -1,11 +1,15 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.cache.AccountStatusCache;
+import com.mtsolutions.application.cache.AllowedOriginCache;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
+import com.mtsolutions.application.utils.NormalizeUtils;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateClientApplicationSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.Owner;
@@ -28,14 +32,25 @@ public class ClientApplicationService {
     private final BcryptService bcryptService;
     private final DateUtils dateUtils;
     private final ContextComponent contextComponent;
+    private final AllowedOriginCache allowedOriginCache;
+    private final AccountStatusCache accountStatusCache;
 
-    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository, OwnerService ownerService, KeyGeneratorUtils keyGeneratorUtils, BcryptService bcryptService, DateUtils dateUtils, ContextComponent contextComponent) {
+    public ClientApplicationService(ClientApplicationRepository clientApplicationRepository,
+                                    OwnerService ownerService,
+                                    KeyGeneratorUtils keyGeneratorUtils,
+                                    BcryptService bcryptService,
+                                    DateUtils dateUtils,
+                                    ContextComponent contextComponent,
+                                    AllowedOriginCache allowedOriginCache,
+                                    AccountStatusCache accountStatusCache) {
         this.clientApplicationRepository = clientApplicationRepository;
         this.ownerService = ownerService;
         this.keyGeneratorUtils = keyGeneratorUtils;
         this.bcryptService = bcryptService;
         this.dateUtils = dateUtils;
         this.contextComponent = contextComponent;
+        this.allowedOriginCache = allowedOriginCache;
+        this.accountStatusCache = accountStatusCache;
     }
 
     public ClientApplicationSecretResult createClientApplication(CreateClientApplicationRequestDto request) {
@@ -59,6 +74,7 @@ public class ClientApplicationService {
                 .jwtExpirationInMinutes(request.jwtExpirationInMinutes())
                 .refreshTokenExpirationInDays(request.refreshTokenExpirationInDays())
                 .allowedOrigins(request.allowedOrigins())
+                .googleAudience(NormalizeUtils.trimToNull(request.googleAudience()))
                 .requiredUserFields(request.requiredUserFields() != null ? request.requiredUserFields() : new ArrayList<>())
                 .createdAt(this.dateUtils.now())
                 .updatedAt(this.dateUtils.now())
@@ -102,11 +118,34 @@ public class ClientApplicationService {
         clientApplication.setUpdatedAt(this.dateUtils.now());
 
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
+        this.allowedOriginCache.invalidate(clientApplication.getAppId());
         log.info("Required user fields updated for client application with ID: {}", clientApplication.getAppId());
     }
 
+    public ClientApplication updateSettings(UpdateClientApplicationSettingsRequestDto request) {
+        ClientApplication clientApplication = this.findClientApplicationById(request.appId());
+        this.validateOwnerAccess(null, clientApplication);
+        if (request.allowedOrigins() != null) {
+            clientApplication.setAllowedOrigins(request.allowedOrigins());
+        }
+        if (request.jwtExpirationInMinutes() != null) {
+            clientApplication.setJwtExpirationInMinutes(request.jwtExpirationInMinutes());
+        }
+        if (request.refreshTokenExpirationInDays() != null) {
+            clientApplication.setRefreshTokenExpirationInDays(request.refreshTokenExpirationInDays());
+        }
+        if (request.googleAudience() != null) {
+            clientApplication.setGoogleAudience(NormalizeUtils.trimToNull(request.googleAudience()));
+        }
+        clientApplication.setUpdatedAt(this.dateUtils.now());
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+        this.allowedOriginCache.invalidate(clientApplication.getAppId());
+        log.info("Client application settings updated for ID: {}", clientApplication.getAppId());
+        return clientApplication;
+    }
+
     public ClientApplicationSecretResult rotateClientApplicationSecret() {
-        if (!"APPLICATION".equals(this.contextComponent.getRole())) {
+        if (!this.contextComponent.hasRole("APPLICATION")) {
             throw new ApplicationForbiddenException();
         }
 
@@ -136,11 +175,12 @@ public class ClientApplicationService {
                 .supportUrl(request.supportUrl())
                 .verificationRedirectUrl(request.verificationRedirectUrl())
                 .passwordResetRedirectUrl(request.passwordResetRedirectUrl())
+                .loginUrl(request.loginUrl())
                 .build();
     }
 
     private void validateOwnerAccess(String ownerId, ClientApplication clientApplication) {
-        if (!"OWNER_WRITER".equals(this.contextComponent.getRole())) {
+        if (!this.contextComponent.hasRole("OWNER_WRITER")) {
             throw new ApplicationForbiddenException();
         }
 

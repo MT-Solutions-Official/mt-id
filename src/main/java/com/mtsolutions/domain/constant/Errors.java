@@ -11,6 +11,8 @@ public enum Errors {
     APPLICATION_FORBIDDEN("Application forbidden"),
     REQUIRED_USER_FIELD_MISSING("Required user field is missing"),
     USER_ROLE_ALREADY_EXISTS("User role already exists"),
+    EMAIL_ALREADY_EXISTS("Email already exists"),
+    USERNAME_ALREADY_EXISTS("Username already exists"),
     USER_ROLE_NOT_FOUND("User role not found"),
     USER_NOT_FOUND("User not found"),
     FORBIDDEN("Forbidden"),
@@ -22,6 +24,10 @@ public enum Errors {
     ZIPPOPOTAM_ZIP_NOT_FOUND("Zippopotam zip not found"),
     ZIPPOPOTAM_API_UNAVAILABLE("Zippopotam API unavailable"),
     EMAIL_ALREADY_VERIFIED("Email is already verified"),
+    EMAIL_NOT_VERIFIED("Email is not verified"),
+    ACCOUNT_DISABLED("Account is disabled"),
+    WEAK_PASSWORD("Password must be at least 8 characters and include uppercase, lowercase, a number and a special character"),
+    PASSWORD_COMPROMISED("Password has appeared in a data breach and cannot be used"),
     INVALID_OR_EXPIRED_TOKEN("Invalid or expired token"),
     RATE_LIMIT_EXCEEDED("Too many requests. Please try again later.");
 

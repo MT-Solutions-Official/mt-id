@@ -32,7 +32,20 @@ public class ContextComponent {
         return jwt.getClaim("name");
     }
 
+    public boolean hasRole(String role) {
+        return role != null && this.identity.getRoles().contains(role);
+    }
+
     public String getRole() {
+        if (this.hasRole("APPLICATION")) {
+            return "APPLICATION";
+        }
+        if (this.hasRole("REFRESH_TOKEN")) {
+            return "REFRESH_TOKEN";
+        }
+        if (this.hasRole("USER")) {
+            return "USER";
+        }
         return identity.getRoles().stream().findFirst().orElse(null);
     }
 
@@ -69,6 +82,26 @@ public class ContextComponent {
         }
 
         return ownerId;
+    }
+
+    public void validateAppOrSelfAccess(String resourceAppId, String resourceUserId) {
+        String authenticatedAppId = this.getAuthenticatedAppIdOrNull();
+        if (this.hasRole("APPLICATION")
+                && authenticatedAppId != null
+                && authenticatedAppId.equals(resourceAppId)) {
+            return;
+        }
+
+        String authenticatedUserId = this.getAuthenticatedUserIdOrNull();
+        if (this.hasRole("USER")
+                && authenticatedUserId != null
+                && authenticatedUserId.equals(resourceUserId)
+                && authenticatedAppId != null
+                && authenticatedAppId.equals(resourceAppId)) {
+            return;
+        }
+
+        throw new ApplicationForbiddenException();
     }
 
 }

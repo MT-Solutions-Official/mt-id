@@ -4,9 +4,10 @@ import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.resource.rest.examples.OwnerExamples;
 import com.mtsolutions.domain.controller.OwnerController;
 import com.mtsolutions.domain.dto.request.CreateOwnerRequestDto;
-import com.mtsolutions.domain.dto.request.ForgotPasswordRequestDto;
+import com.mtsolutions.domain.dto.request.OwnerForgotPasswordRequestDto;
 import com.mtsolutions.domain.dto.request.ResetPasswordRequestDto;
 import com.mtsolutions.domain.dto.request.SendEmailVerificationRequestDto;
+import com.mtsolutions.domain.dto.response.OwnerResponseDto;
 import com.mtsolutions.domain.entity.Owner;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
@@ -15,6 +16,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -39,12 +41,75 @@ public class OwnerResource {
         this.ownerController = ownerController;
     }
 
+    @GET
+    @Path("/me")
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(
+            summary = "Get the authenticated owner",
+            description = "Returns the profile of the owner identified by the access token."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Current owner",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Current owner",
+                            value = OwnerExamples.OWNER_CREATED)
+            )
+    )
+    public Response me() {
+        return Response.ok(new OwnerResponseDto(this.ownerController.findCurrentOwner())).build();
+    }
+
+    @PATCH
+    @Path("/{ownerId}/disable")
+    @RolesAllowed("OWNER_WRITER")
+    @Operation(
+            summary = "Disable owner",
+            description = "Disables another owner. An owner cannot disable themselves."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Owner disabled",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Disabled owner",
+                            value = OwnerExamples.OWNER_CREATED)
+            )
+    )
+    public Response disable(@PathParam(RequestParams.OWNER_ID) String ownerId) {
+        return Response.ok(new OwnerResponseDto(this.ownerController.disableOwner(ownerId))).build();
+    }
+
+    @PATCH
+    @Path("/{ownerId}/enable")
+    @RolesAllowed("OWNER_WRITER")
+    @Operation(
+            summary = "Enable owner",
+            description = "Re-enables a previously disabled owner."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Owner enabled",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Enabled owner",
+                            value = OwnerExamples.OWNER_CREATED)
+            )
+    )
+    public Response enable(@PathParam(RequestParams.OWNER_ID) String ownerId) {
+        return Response.ok(new OwnerResponseDto(this.ownerController.enableOwner(ownerId))).build();
+    }
+
     @POST
     @Path("/create")
     @PermitAll
     @Operation(
             summary = "Create a new owner",
-            description = "Creates a new owner with the provided details."
+            description = "Creates the first platform owner when none exist (bootstrap as OWNER_WRITER). After that, only an authenticated OWNER_WRITER can create additional owners, which default to OWNER_VIEWER unless a role is provided. A verification email is sent after creation."
     )
     @RequestBody(
             content = @Content(
@@ -69,13 +134,13 @@ public class OwnerResource {
         Owner owner = this.ownerController.createOwner(request);
 
         return Response.status(Response.Status.CREATED)
-                .entity(owner)
+                .entity(new OwnerResponseDto(owner))
                 .build();
     }
 
     @POST
     @Path("/{ownerId}/email/verification/send")
-    @RolesAllowed({"OWNER_WRITER"})
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Send owner email verification",
             description = "Generates a verification token and sends an email to the owner email."
@@ -124,7 +189,7 @@ public class OwnerResource {
             )
     )
     @APIResponse(responseCode = "204", description = "Password reset email sent if the account exists")
-    public Response forgotPassword(@NotNull @Valid ForgotPasswordRequestDto request) {
+    public Response forgotPassword(@NotNull @Valid OwnerForgotPasswordRequestDto request) {
         this.ownerController.forgotPassword(request.email());
         return Response.noContent().build();
     }

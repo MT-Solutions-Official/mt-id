@@ -37,6 +37,7 @@ public class ClientApplication {
     private Integer refreshTokenExpirationInDays;
 
     private List<String> allowedOrigins;
+    private String googleAudience;
     @Builder.Default
     private List<UserRequiredField> requiredUserFields = new ArrayList<>();
 

@@ -88,7 +88,7 @@ public class OwnerAuthResource {
             )
     )
     public Response generateGoogleOwnerToken(GenerateGoogleTokenRequestDto request) {
-        OwnerTokenResponseDto response = this.ownerAuthController.generateGoogleOwnerToken(request.idToken());
+        OwnerTokenResponseDto response = this.ownerAuthController.generateGoogleOwnerToken(request.idToken(), request.nonce());
         return Response.status(Response.Status.OK)
                 .entity(response)
                 .build();

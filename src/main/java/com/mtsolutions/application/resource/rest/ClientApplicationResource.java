@@ -5,6 +5,7 @@ import com.mtsolutions.domain.controller.ClientApplicationController;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateClientApplicationSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
@@ -118,6 +119,36 @@ public class ClientApplicationResource {
         this.applicationController.updateRequiredUserFields(request);
 
         return Response.status(Response.Status.NO_CONTENT)
+                .build();
+    }
+
+    @PATCH
+    @Path("/settings")
+    @RolesAllowed("OWNER_WRITER")
+    @Operation(
+            summary = "Update client application settings",
+            description = "Updates allowed origins, Google audience and token TTLs for a client application."
+    )
+    @RequestBody(
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Update client application settings",
+                            value = ClientApplicationExamples.UPDATE_CLIENT_APPLICATION_SETTINGS)
+            )
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Client application updated successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Client Application Updated",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION_CREATED)
+            )
+    )
+    public Response updateSettings(UpdateClientApplicationSettingsRequestDto request) {
+        return Response.ok(new ClientApplicationResponseDto(this.applicationController.updateSettings(request)))
                 .build();
     }
 

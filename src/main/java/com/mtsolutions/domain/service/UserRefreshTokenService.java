@@ -13,16 +13,20 @@ import java.time.LocalDateTime;
 public class UserRefreshTokenService {
 
     private final UserRefreshTokenRepository userRefreshTokenRepository;
+    private final TokenHashService tokenHashService;
     private final DateUtils dateUtils;
 
-    public UserRefreshTokenService(UserRefreshTokenRepository userRefreshTokenRepository, DateUtils dateUtils) {
+    public UserRefreshTokenService(UserRefreshTokenRepository userRefreshTokenRepository,
+                                   TokenHashService tokenHashService,
+                                   DateUtils dateUtils) {
         this.userRefreshTokenRepository = userRefreshTokenRepository;
+        this.tokenHashService = tokenHashService;
         this.dateUtils = dateUtils;
     }
 
     public void registerRefreshToken(String tokenId, String userId, String appId, Duration expiration) {
         UserRefreshToken refreshToken = UserRefreshToken.builder()
-                .tokenId(tokenId)
+                .tokenId(this.hash(tokenId))
                 .userId(userId)
                 .appId(appId)
                 .createdAt(this.dateUtils.now())
@@ -33,7 +37,7 @@ public class UserRefreshTokenService {
     }
 
     public UserRefreshToken validateActiveRefreshToken(String tokenId, String userId, String appId) {
-        UserRefreshToken refreshToken = this.userRefreshTokenRepository.findByTokenId(tokenId)
+        UserRefreshToken refreshToken = this.userRefreshTokenRepository.findByTokenId(this.hash(tokenId))
                 .orElseThrow(ApplicationAuthenticationFailedException::new);
 
         LocalDateTime now = this.dateUtils.now();
@@ -49,12 +53,30 @@ public class UserRefreshTokenService {
     }
 
     public void revokeRefreshToken(String tokenId) {
-        UserRefreshToken refreshToken = this.userRefreshTokenRepository.findByTokenId(tokenId)
+        UserRefreshToken refreshToken = this.userRefreshTokenRepository.findByTokenId(this.hash(tokenId))
                 .orElseThrow(ApplicationAuthenticationFailedException::new);
 
+        this.markRevoked(refreshToken);
+    }
+
+    public void revokeAllForUser(String userId, String appId) {
+        for (UserRefreshToken refreshToken : this.userRefreshTokenRepository.findActiveByUserIdAndAppId(userId, appId)) {
+            this.markRevoked(refreshToken);
+        }
+    }
+
+    private void markRevoked(UserRefreshToken refreshToken) {
         if (refreshToken.getRevokedAt() == null) {
             refreshToken.setRevokedAt(this.dateUtils.now());
             this.userRefreshTokenRepository.persistOrUpdate(refreshToken);
         }
+    }
+
+    private String hash(String rawTokenId) {
+        String hashed = this.tokenHashService.hash(rawTokenId);
+        if (hashed == null) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+        return hashed;
     }
 }

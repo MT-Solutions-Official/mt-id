@@ -13,10 +13,17 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @ApplicationScoped
 public class JwtService {
+
+    private static final Set<String> RESERVED_GROUPS = Set.of(
+            "USER", "APPLICATION", "REFRESH_TOKEN", "OWNER_WRITER", "OWNER_VIEWER"
+    );
 
     @ConfigProperty(name = "mp.jwt.verify.issuer")
     String jwtIssuer;
@@ -70,7 +77,21 @@ public class JwtService {
         return tokenResponse(accessToken, expiration);
     }
 
-    public UserTokenResponseDto generateUserToken(User user, Email loginEmail, String refreshTokenId, Duration accessExpiration, Duration refreshExpiration) {
+    public UserTokenResponseDto generateUserToken(User user,
+                                                  Email loginEmail,
+                                                  String refreshTokenId,
+                                                  Duration accessExpiration,
+                                                  Duration refreshExpiration,
+                                                  List<String> roleNames) {
+        Set<String> groups = new LinkedHashSet<>();
+        groups.add("USER");
+        if (roleNames != null) {
+            roleNames.stream()
+                    .filter(roleName -> roleName != null && !roleName.isBlank())
+                    .filter(roleName -> !RESERVED_GROUPS.contains(roleName.toUpperCase(Locale.ROOT)))
+                    .forEach(groups::add);
+        }
+
         String accessToken = Jwt.issuer(jwtIssuer)
                 .subject(user.getUserId())
                 .upn(loginEmail.getEmail())
@@ -78,8 +99,9 @@ public class JwtService {
                 .claim("app_id", user.getAppId())
                 .claim("name", user.getName())
                 .claim("emailVerified", loginEmail.getVerified())
+                .claim("roles", groups.stream().filter(role -> !"USER".equals(role)).toList())
                 .claim("token_type", "access")
-                .groups(Set.of("USER"))
+                .groups(groups)
                 .expiresIn(accessExpiration)
                 .sign();
 

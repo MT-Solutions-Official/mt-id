@@ -20,4 +20,8 @@ public class DateUtils {
     public LocalDate today() {
         return LocalDate.now(ZoneId.of(timezone));
     }
+
+    public String formatDisplay(LocalDateTime dateTime) {
+        return dateTime.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm"));
+    }
 }

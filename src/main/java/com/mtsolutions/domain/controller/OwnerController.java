@@ -18,7 +18,9 @@ public class OwnerController {
     }
 
     public Owner createOwner(CreateOwnerRequestDto request) {
-        return this.ownerService.createOwner(request);
+        Owner owner = this.ownerService.createOwner(request);
+        this.accountEmailService.sendOwnerVerificationEmailAfterCreate(owner);
+        return owner;
     }
 
     public void sendEmailVerification(String ownerId, String email) {
@@ -35,5 +37,17 @@ public class OwnerController {
 
     public void resetPassword(String token, String newPassword) {
         this.accountEmailService.resetOwnerPassword(token, newPassword);
+    }
+
+    public Owner findCurrentOwner() {
+        return this.ownerService.findCurrentOwner();
+    }
+
+    public Owner disableOwner(String ownerId) {
+        return this.ownerService.disableOwner(ownerId);
+    }
+
+    public Owner enableOwner(String ownerId) {
+        return this.ownerService.enableOwner(ownerId);
     }
 }

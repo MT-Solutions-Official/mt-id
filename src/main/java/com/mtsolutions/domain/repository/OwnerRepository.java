@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.bson.types.ObjectId;
 
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class OwnerRepository implements PanacheMongoRepositoryBase<Owner, String> {
@@ -22,8 +23,12 @@ public class OwnerRepository implements PanacheMongoRepositoryBase<Owner, String
         return find("_id", new ObjectId(ownerId)).firstResultOptional().isPresent();
     }
 
+    public boolean existsByEmail(String email) {
+        return count("{'email.email': {$regex: ?1, $options: 'i'}}", "^" + Pattern.quote(email) + "$") > 0;
+    }
+
     public Optional<Owner> findOwnerByEmail(String email) {
-        return find("email.email", email).firstResultOptional();
+        return find("{'email.email': {$regex: ?1, $options: 'i'}}", "^" + Pattern.quote(email) + "$").firstResultOptional();
     }
 
     public Optional<Owner> findOwnerByEmailVerificationToken(String token) {

@@ -14,7 +14,7 @@ public class ApplicationAuthExamples {
               "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
               "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
               "tokenType": "Bearer",
-              "expiresIn": 86400,
+              "expiresIn": 900,
               "refreshTokenExpiresIn": 2592000
             }
             """;
@@ -30,7 +30,8 @@ public class ApplicationAuthExamples {
     public static final String USER_TOKEN_REQUEST = """
             {
               "email": "user@example.com",
-              "password": "user-password"
+              "password": "user-password",
+              "appId": "507f1f77bcf86cd799439011"
             }
             """;
 
@@ -40,12 +41,20 @@ public class ApplicationAuthExamples {
             }
             """;
 
+    public static final String USER_GOOGLE_TOKEN_REQUEST = """
+            {
+              "idToken": "google-id-token",
+              "appId": "507f1f77bcf86cd799439011",
+              "nonce": "optional-nonce"
+            }
+            """;
+
     public static final String USER_TOKEN_RESPONSE = """
             {
               "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
               "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
               "tokenType": "Bearer",
-              "expiresIn": 86400,
+              "expiresIn": 900,
               "refreshTokenExpiresIn": 2592000
             }
             """;
@@ -55,7 +64,7 @@ public class ApplicationAuthExamples {
               "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
               "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
               "tokenType": "Bearer",
-              "expiresIn": 86400,
+              "expiresIn": 900,
               "refreshTokenExpiresIn": 2592000
             }
             """;
@@ -65,7 +74,7 @@ public class ApplicationAuthExamples {
               "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
               "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
               "tokenType": "Bearer",
-              "expiresIn": 86400,
+              "expiresIn": 900,
               "refreshTokenExpiresIn": 2592000
             }
             """;

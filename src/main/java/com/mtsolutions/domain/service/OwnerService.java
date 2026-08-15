@@ -1,7 +1,14 @@
 package com.mtsolutions.domain.service;
 
+import com.mongodb.MongoException;
+import com.mtsolutions.application.cache.AccountStatusCache;
+import com.mtsolutions.application.common.ContextComponent;
+import com.mtsolutions.application.exception.ApplicationForbiddenException;
+import com.mtsolutions.application.exception.EmailAlreadyExistsException;
 import com.mtsolutions.application.exception.OwnerNotFoundException;
+import com.mtsolutions.application.utils.AccountStatusUtils;
 import com.mtsolutions.application.utils.DateUtils;
+import com.mtsolutions.application.utils.NormalizeUtils;
 import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.dto.request.CreateOwnerRequestDto;
@@ -20,21 +27,43 @@ public class OwnerService {
 
     private final OwnerRepository ownerRepository;
     private final BcryptService bcryptService;
+    private final PasswordPolicyService passwordPolicyService;
+    private final OwnerRefreshTokenService ownerRefreshTokenService;
+    private final AccountStatusCache accountStatusCache;
     private final DateUtils dateUtils;
+    private final ContextComponent contextComponent;
 
-    public OwnerService(OwnerRepository ownerRepository, BcryptService bcryptService, DateUtils dateUtils) {
+    public OwnerService(OwnerRepository ownerRepository,
+                        BcryptService bcryptService,
+                        PasswordPolicyService passwordPolicyService,
+                        OwnerRefreshTokenService ownerRefreshTokenService,
+                        AccountStatusCache accountStatusCache,
+                        DateUtils dateUtils,
+                        ContextComponent contextComponent) {
         this.ownerRepository = ownerRepository;
         this.bcryptService = bcryptService;
+        this.passwordPolicyService = passwordPolicyService;
+        this.ownerRefreshTokenService = ownerRefreshTokenService;
+        this.accountStatusCache = accountStatusCache;
         this.dateUtils = dateUtils;
+        this.contextComponent = contextComponent;
     }
 
     public Owner createOwner(CreateOwnerRequestDto request) {
         log.info("Creating owner with name: {}", request.name());
+        boolean bootstrapping = this.ownerRepository.count() == 0;
+        this.validateOwnerCreationAccess(bootstrapping);
 
+        String normalizedEmail = NormalizeUtils.normalizeEmail(request.email());
+        if (this.ownerRepository.existsByEmail(normalizedEmail)) {
+            throw new EmailAlreadyExistsException();
+        }
+
+        this.passwordPolicyService.validate(request.password());
         String hashedPassword = this.bcryptService.encryptPassword(request.password());
 
         Email email = Email.builder()
-                .email(request.email())
+                .email(normalizedEmail)
                 .verified(false)
                 .build();
 
@@ -53,13 +82,13 @@ public class OwnerService {
                 .email(email)
                 .phone(phone)
                 .password(password)
-                .role(OwnerRole.OWNER_WRITER)
+                .role(this.resolveCreatedOwnerRole(bootstrapping, request.role()))
                 .createdAt(this.dateUtils.now())
                 .updatedAt(this.dateUtils.now())
                 .active(true)
                 .build();
 
-        this.ownerRepository.persist(owner);
+        this.persistOwner(owner);
         log.info("Owner created with ID: {}", owner.getOwnerId());
 
         return owner;
@@ -69,13 +98,80 @@ public class OwnerService {
         return this.ownerRepository.findOwnerById(ownerId);
     }
 
+    public Owner findCurrentOwner() {
+        String ownerId = this.contextComponent.getAuthenticatedOwnerId();
+        return this.findOwnerById(ownerId);
+    }
+
+    public Owner disableOwner(String ownerId) {
+        if (!this.contextComponent.hasRole("OWNER_WRITER")) {
+            throw new ApplicationForbiddenException();
+        }
+        String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
+        if (authenticatedOwnerId.equals(ownerId)) {
+            throw new ApplicationForbiddenException();
+        }
+        Owner owner = this.findOwnerById(ownerId);
+        if (!AccountStatusUtils.isDisabled(owner)) {
+            owner.setActive(false);
+            owner.setDisabledAt(this.dateUtils.now());
+            owner.setUpdatedAt(this.dateUtils.now());
+            this.ownerRepository.persistOrUpdate(owner);
+            this.ownerRefreshTokenService.revokeAllForOwner(owner.getOwnerId());
+            this.accountStatusCache.putOwnerDisabled(owner.getOwnerId(), true);
+            log.info("Owner disabled with ID: {}", ownerId);
+        }
+        return owner;
+    }
+
+    public Owner enableOwner(String ownerId) {
+        if (!this.contextComponent.hasRole("OWNER_WRITER")) {
+            throw new ApplicationForbiddenException();
+        }
+        Owner owner = this.findOwnerById(ownerId);
+        owner.setActive(true);
+        owner.setDisabledAt(null);
+        owner.setUpdatedAt(this.dateUtils.now());
+        this.ownerRepository.persistOrUpdate(owner);
+        this.accountStatusCache.putOwnerDisabled(owner.getOwnerId(), false);
+        log.info("Owner enabled with ID: {}", ownerId);
+        return owner;
+    }
+
     public Boolean existsOwnerById(String ownerId) {
         return this.ownerRepository.existsByOwnerId(ownerId);
     }
 
     public Owner findOwnerByEmail(String email) {
-        return this.ownerRepository.findOwnerByEmail(email)
+        return this.ownerRepository.findOwnerByEmail(NormalizeUtils.normalizeEmail(email))
                 .orElseThrow(OwnerNotFoundException::new);
+    }
+
+    private void validateOwnerCreationAccess(boolean bootstrapping) {
+        if (bootstrapping) {
+            return;
+        }
+        if (!this.contextComponent.hasRole("OWNER_WRITER")) {
+            throw new ApplicationForbiddenException();
+        }
+    }
+
+    private OwnerRole resolveCreatedOwnerRole(boolean bootstrapping, OwnerRole requestedRole) {
+        if (bootstrapping) {
+            return OwnerRole.OWNER_WRITER;
+        }
+        return requestedRole != null ? requestedRole : OwnerRole.OWNER_VIEWER;
+    }
+
+    private void persistOwner(Owner owner) {
+        try {
+            this.ownerRepository.persist(owner);
+        } catch (MongoException e) {
+            if (e.getCode() == 11000) {
+                throw new EmailAlreadyExistsException();
+            }
+            throw e;
+        }
     }
 
     private Document fillDocumentFields(CreateDocumentRequestDto request) {

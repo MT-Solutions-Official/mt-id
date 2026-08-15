@@ -70,6 +70,11 @@
     </div>
 
     <div class="row">
+      <label for="appId">App ID (obrigatorio para login de user)</label>
+      <input id="appId" placeholder="ObjectId da client application" />
+    </div>
+
+    <div class="row">
       <label for="authType">Endpoint</label>
       <select id="authType">
         <option value="users">/api/v1/auth/users/google-token</option>
@@ -169,19 +174,26 @@
       const backendUrl = document.getElementById("backendUrl").value.trim();
       const type = document.getElementById("authType").value;
       const idToken = idTokenEl.value.trim();
+      const appId = document.getElementById("appId").value.trim();
 
       if (!backendUrl || !idToken) {
         setStatus("Backend URL e ID token sao obrigatorios.", true);
         return;
       }
 
+      if (type === "users" && !appId) {
+        setStatus("App ID e obrigatorio para login de user.", true);
+        return;
+      }
+
       const url = `${backendUrl}/api/v1/auth/${type}/google-token`;
+      const payload = type === "users" ? { idToken, appId } : { idToken };
 
       try {
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken })
+          body: JSON.stringify(payload)
         });
 
         const text = await res.text();

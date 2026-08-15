@@ -49,12 +49,96 @@ public class UserResource {
         this.userController = userController;
     }
 
+    @GET
+    @Path("/me")
+    @RolesAllowed("USER")
+    @Operation(
+            summary = "Get the authenticated user",
+            description = "Returns the profile of the user identified by the access token."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Current user",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Current user",
+                            value = UserExamples.USER_CREATED)
+            )
+    )
+    public Response me() {
+        return Response.ok(new UserResponseDto(this.userController.findCurrentUser())).build();
+    }
+
+    @GET
+    @Path("/{userId}")
+    @RolesAllowed({"APPLICATION", "USER"})
+    @Operation(
+            summary = "Get user by ID",
+            description = "Returns a user. An application can read users of its appId. A user can only read their own profile."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "User",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "User",
+                            value = UserExamples.USER_CREATED)
+            )
+    )
+    public Response findById(@PathParam(RequestParams.USER_ID) String userId) {
+        return Response.ok(new UserResponseDto(this.userController.findUserById(userId))).build();
+    }
+
+    @PATCH
+    @Path("/{userId}/disable")
+    @RolesAllowed("APPLICATION")
+    @Operation(
+            summary = "Disable user",
+            description = "Disables the user, revokes refresh tokens and blocks new logins. Existing access tokens are rejected on the next request."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "User disabled",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Disabled user",
+                            value = UserExamples.USER_CREATED)
+            )
+    )
+    public Response disable(@PathParam(RequestParams.USER_ID) String userId) {
+        return Response.ok(new UserResponseDto(this.userController.disableUser(userId))).build();
+    }
+
+    @PATCH
+    @Path("/{userId}/enable")
+    @RolesAllowed("APPLICATION")
+    @Operation(
+            summary = "Enable user",
+            description = "Re-enables a previously disabled user."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "User enabled",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Enabled user",
+                            value = UserExamples.USER_CREATED)
+            )
+    )
+    public Response enable(@PathParam(RequestParams.USER_ID) String userId) {
+        return Response.ok(new UserResponseDto(this.userController.enableUser(userId))).build();
+    }
+
     @POST
     @Path("/create")
     @RolesAllowed("APPLICATION")
     @Operation(
             summary = "Create a new user",
-            description = "Creates a new user with the provided details."
+            description = "Creates a new user with the provided details and sends a verification email when an address is present."
     )
     @RequestBody(
             content = @Content(
@@ -123,7 +207,7 @@ public class UserResource {
     @PermitAll
     @Operation(
             summary = "Request password reset",
-            description = "Sends a password reset email to the given user email."
+            description = "Sends a password reset email to the given user email in the specified application."
     )
     @RequestBody(
             content = @Content(

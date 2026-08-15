@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 @RegisterForReflection
 public record GenerateGoogleTokenRequestDto(
         @NotBlank(message = "Google ID token is required")
-        String idToken
+        String idToken,
+        String nonce
 ) {
 }

@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
@@ -14,7 +15,9 @@ public class Email {
 
     private String email;
     private Boolean primary;
+    @JsonIgnore
     private String verificationToken;
+    @JsonIgnore
     private LocalDateTime verificationTokenExpiry;
     private Boolean verified;
 }

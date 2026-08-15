@@ -37,6 +37,20 @@ public class UserRoleRepository implements PanacheMongoRepositoryBase<UserRole, 
                 .orElseThrow(UserRoleNotFoundException::new);
     }
 
+    public List<UserRole> findByIds(List<String> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return List.of();
+        }
+        List<ObjectId> objectIds = roleIds.stream()
+                .filter(ObjectId::isValid)
+                .map(ObjectId::new)
+                .toList();
+        if (objectIds.isEmpty()) {
+            return List.of();
+        }
+        return find("{_id: {$in: ?1}}", objectIds).list();
+    }
+
     public List<UserRole> findByAppId(String appId) {
         return find("appId", appId).list();
     }

@@ -1,5 +1,6 @@
 package com.mtsolutions.domain.controller;
 
+import com.mtsolutions.domain.dto.request.GenerateUserGoogleTokenRequestDto;
 import com.mtsolutions.domain.dto.response.UserTokenResponseDto;
 import com.mtsolutions.domain.service.UserAuthService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -13,12 +14,12 @@ public class UserAuthController {
         this.userAuthService = userAuthService;
     }
 
-    public UserTokenResponseDto generateUserToken(String email, String password) {
-        return this.userAuthService.generateUserToken(email, password);
+    public UserTokenResponseDto generateUserToken(String email, String password, String appId) {
+        return this.userAuthService.generateUserToken(email, password, appId);
     }
 
-    public UserTokenResponseDto generateGoogleUserToken(String idToken) {
-        return this.userAuthService.generateGoogleUserToken(idToken);
+    public UserTokenResponseDto generateGoogleUserToken(GenerateUserGoogleTokenRequestDto request) {
+        return this.userAuthService.generateGoogleUserToken(request);
     }
 
     public UserTokenResponseDto refreshUserToken() {

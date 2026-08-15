@@ -18,11 +18,13 @@ public class ClientApplicationExamples {
                     "supportEmail": "support@example.com",
                     "supportUrl": "https://example.com/support",
                     "verificationRedirectUrl": "https://example.com/verify",
-                    "passwordResetRedirectUrl": "https://example.com/reset-password"
+                    "passwordResetRedirectUrl": "https://example.com/reset-password",
+                    "loginUrl": "https://example.com/login"
                 },
-                "jwtExpirationInMinutes": 60,
+                "jwtExpirationInMinutes": 15,
                 "refreshTokenExpirationInDays": 30,
                 "allowedOrigins": ["https://example.com", "https://another-example.com"],
+                "googleAudience": "1234567890-example.apps.googleusercontent.com",
                 "requiredUserFields": ["NAME", "EMAIL", "PASSWORD"]
             }
             """;
@@ -40,7 +42,8 @@ public class ClientApplicationExamples {
                     "supportEmail": "support@example.com",
                     "supportUrl": "https://example.com/support",
                     "verificationRedirectUrl": "https://example.com/verify",
-                    "passwordResetRedirectUrl": "https://example.com/reset-password"
+                    "passwordResetRedirectUrl": "https://example.com/reset-password",
+                    "loginUrl": "https://example.com/login"
                 },
                 "apiKey": "exampleApiKey123456",
                 "apiSecret": "exampleApiSecret123456",
@@ -68,6 +71,16 @@ public class ClientApplicationExamples {
             }
             """;
 
+    public static final String UPDATE_CLIENT_APPLICATION_SETTINGS = """
+            {
+                "appId": "507f1f77bcf86cd799439011",
+                "allowedOrigins": ["https://example.com"],
+                "jwtExpirationInMinutes": 15,
+                "refreshTokenExpirationInDays": 30,
+                "googleAudience": "1234567890-example.apps.googleusercontent.com"
+            }
+            """;
+
     public static final String CLIENT_APPLICATION_SECRET_ROTATED = """
             {
                 "appId": "507f1f77bcf86cd799439011",
@@ -81,7 +94,8 @@ public class ClientApplicationExamples {
                     "supportEmail": "support@example.com",
                     "supportUrl": "https://example.com/support",
                     "verificationRedirectUrl": "https://example.com/verify",
-                    "passwordResetRedirectUrl": "https://example.com/reset-password"
+                    "passwordResetRedirectUrl": "https://example.com/reset-password",
+                    "loginUrl": "https://example.com/login"
                 },
                 "apiKey": "exampleApiKey123456",
                 "apiSecret": "exampleNewApiSecret123456",

@@ -32,6 +32,7 @@ python3 -m http.server 3000
 ## Observacoes
 
 - O backend valida `iss`, `aud`, `email_verified` e usuario ativo no banco.
+- Login de user exige `appId` no body, alem do `idToken`.
 - Se der `401`, confira se:
   - O `aud` do token bate com o `app.mt.id.google.user.audience` (ou owner).
   - O email da conta Google existe na colecao de usuarios/owners.

@@ -1,9 +1,18 @@
 package com.mtsolutions.domain.service;
 
+import com.mtsolutions.application.common.ClientRequestContext;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.client.google.GoogleTokenInfoResponseDto;
+import com.mtsolutions.application.exception.AccountDisabledException;
 import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
+import com.mtsolutions.application.exception.ClientApplicationNotFoundException;
+import com.mtsolutions.application.exception.EmailAlreadyExistsException;
+import com.mtsolutions.application.exception.EmailNotVerifiedException;
+import com.mtsolutions.application.exception.TooManyRequestsException;
+import com.mtsolutions.application.utils.AccountStatusUtils;
 import com.mtsolutions.application.utils.DateUtils;
+import com.mtsolutions.application.utils.NormalizeUtils;
+import com.mtsolutions.domain.dto.request.GenerateUserGoogleTokenRequestDto;
 import com.mtsolutions.domain.dto.response.UserTokenResponseDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.User;
@@ -19,11 +28,32 @@ import java.util.UUID;
 @ApplicationScoped
 public class UserAuthService {
 
+    @ConfigProperty(name = "app.mt.id.token.expiration.minutes")
+    Integer tokenExpirationMinutes;
+
     @ConfigProperty(name = "app.mt.id.refresh-token.expiration.days")
     Integer refreshTokenExpirationInDays;
 
     @ConfigProperty(name = "app.mt.id.google.user.audience")
     String googleUserAudience;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.max-attempts")
+    Integer loginMaxAttempts;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.window.seconds")
+    Integer loginWindowSeconds;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.min-interval.seconds")
+    Integer loginMinIntervalSeconds;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.ip.max-attempts")
+    Integer loginIpMaxAttempts;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.ip.window.seconds")
+    Integer loginIpWindowSeconds;
+
+    @ConfigProperty(name = "app.mt.id.throttle.login.ip.min-interval.seconds")
+    Integer loginIpMinIntervalSeconds;
 
     private final UserRepository userRepository;
     private final ClientApplicationRepository clientApplicationRepository;
@@ -32,7 +62,11 @@ public class UserAuthService {
     private final UserRefreshTokenService userRefreshTokenService;
     private final GoogleTokenVerificationService googleTokenVerificationService;
     private final ContextComponent contextComponent;
+    private final ClientRequestContext clientRequestContext;
     private final DateUtils dateUtils;
+    private final RequestThrottleService requestThrottleService;
+    private final UserService userService;
+    private final UserRoleService userRoleService;
 
     public UserAuthService(UserRepository userRepository,
                            ClientApplicationRepository clientApplicationRepository,
@@ -41,7 +75,11 @@ public class UserAuthService {
                            UserRefreshTokenService userRefreshTokenService,
                            GoogleTokenVerificationService googleTokenVerificationService,
                            ContextComponent contextComponent,
-                           DateUtils dateUtils) {
+                           ClientRequestContext clientRequestContext,
+                           DateUtils dateUtils,
+                           RequestThrottleService requestThrottleService,
+                           UserService userService,
+                           UserRoleService userRoleService) {
         this.userRepository = userRepository;
         this.clientApplicationRepository = clientApplicationRepository;
         this.bcryptService = bcryptService;
@@ -49,36 +87,93 @@ public class UserAuthService {
         this.userRefreshTokenService = userRefreshTokenService;
         this.googleTokenVerificationService = googleTokenVerificationService;
         this.contextComponent = contextComponent;
+        this.clientRequestContext = clientRequestContext;
         this.dateUtils = dateUtils;
+        this.requestThrottleService = requestThrottleService;
+        this.userService = userService;
+        this.userRoleService = userRoleService;
     }
 
-    public UserTokenResponseDto generateUserToken(String email, String password) {
-        String normalizedEmail = normalize(email);
-        if (normalizedEmail == null || password == null || password.isBlank()) {
+    public UserTokenResponseDto generateUserToken(String email, String password, String appId) {
+        String normalizedEmail = NormalizeUtils.normalizeEmail(email);
+        String normalizedAppId = NormalizeUtils.trimToNull(appId);
+        if (normalizedEmail == null || password == null || password.isBlank() || normalizedAppId == null) {
             throw new ApplicationAuthenticationFailedException();
         }
 
-        User user = this.userRepository.findUserByEmail(normalizedEmail);
+        String throttleId = normalizedAppId + ":" + normalizedEmail;
+        this.ensureLoginNotThrottled("user-login", throttleId);
+
+        try {
+            User user = this.userRepository.findUserByAppIdAndEmail(normalizedAppId, normalizedEmail)
+                    .orElseThrow(ApplicationAuthenticationFailedException::new);
+            Email loginEmail = this.resolveLoginEmail(user, normalizedEmail);
+
+            if (user.getPassword() == null
+                    || user.getPassword().getPassword() == null
+                    || !this.bcryptService.verifyPassword(password, user.getPassword().getPassword())) {
+                throw new ApplicationAuthenticationFailedException();
+            }
+
+            this.ensureAccountEnabled(user);
+            this.ensureEmailVerified(loginEmail);
+            this.requestThrottleService.clear("user-login", throttleId);
+            return this.issueTokens(user, loginEmail);
+        } catch (ApplicationAuthenticationFailedException e) {
+            this.recordLoginFailure("user-login", throttleId);
+            throw e;
+        }
+    }
+
+    public UserTokenResponseDto generateGoogleUserToken(GenerateUserGoogleTokenRequestDto request) {
+        String normalizedAppId = NormalizeUtils.trimToNull(request != null ? request.appId() : null);
+        if (normalizedAppId == null || request == null) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+
+        this.ensureIpNotThrottled("user-login-ip");
+
+        ClientApplication clientApplication;
+        try {
+            clientApplication = this.clientApplicationRepository.findClientApplicationById(normalizedAppId);
+        } catch (ClientApplicationNotFoundException e) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+        if (Boolean.FALSE.equals(clientApplication.getActive())) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+
+        String audience = NormalizeUtils.trimToNull(clientApplication.getGoogleAudience());
+        if (audience == null) {
+            audience = this.googleUserAudience;
+        }
+        GoogleTokenInfoResponseDto googleTokenInfo = this.googleTokenVerificationService.verifyIdToken(
+                request.idToken(),
+                audience,
+                request.nonce()
+        );
+        String normalizedEmail = NormalizeUtils.normalizeEmail(googleTokenInfo.getEmail());
+        if (normalizedEmail == null) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+
+        User user;
+        try {
+            user = this.userRepository.findUserByAppIdAndEmail(normalizedAppId, normalizedEmail)
+                    .orElseGet(() -> this.userService.provisionGoogleUser(
+                            normalizedAppId,
+                            normalizedEmail,
+                            googleTokenInfo.getName(),
+                            request
+                    ));
+        } catch (EmailAlreadyExistsException e) {
+            user = this.userRepository.findUserByAppIdAndEmail(normalizedAppId, normalizedEmail)
+                    .orElseThrow(ApplicationAuthenticationFailedException::new);
+        } catch (ClientApplicationNotFoundException e) {
+            throw new ApplicationAuthenticationFailedException();
+        }
         Email loginEmail = this.resolveLoginEmail(user, normalizedEmail);
-
-        if (Boolean.FALSE.equals(user.getActive())
-                || user.getPassword() == null
-                || user.getPassword().getPassword() == null
-                || !this.bcryptService.verifyPassword(password, user.getPassword().getPassword())) {
-            throw new ApplicationAuthenticationFailedException();
-        }
-
-        return this.issueTokens(user, loginEmail);
-    }
-
-    public UserTokenResponseDto generateGoogleUserToken(String idToken) {
-        GoogleTokenInfoResponseDto googleTokenInfo = this.verifyGoogleIdToken(idToken);
-
-        User user = this.userRepository.findUserByEmail(googleTokenInfo.getEmail());
-        Email loginEmail = this.resolveLoginEmail(user, googleTokenInfo.getEmail());
-        if (Boolean.FALSE.equals(user.getActive())) {
-            throw new ApplicationAuthenticationFailedException();
-        }
+        this.ensureAccountEnabled(user);
 
         this.syncGoogleVerifiedEmail(user, loginEmail);
         return this.issueTokens(user, loginEmail);
@@ -102,11 +197,10 @@ public class UserAuthService {
         }
 
         User user = this.userRepository.findUserById(userId);
-        if (Boolean.FALSE.equals(user.getActive())
-                || user.getAppId() == null
-                || !appId.equals(user.getAppId())) {
+        if (user.getAppId() == null || !appId.equals(user.getAppId())) {
             throw new ApplicationAuthenticationFailedException();
         }
+        this.ensureAccountEnabled(user);
 
         ClientApplication clientApplication = this.clientApplicationRepository.findClientApplicationById(appId);
         Email loginEmail = this.resolveRefreshEmail(user, email);
@@ -119,7 +213,14 @@ public class UserAuthService {
         String newRefreshTokenId = UUID.randomUUID().toString();
         this.userRefreshTokenService.registerRefreshToken(newRefreshTokenId, userId, appId, refreshExpiration);
 
-        return this.jwtService.generateUserToken(user, loginEmail, newRefreshTokenId, accessExpiration, refreshExpiration);
+        return this.jwtService.generateUserToken(
+                user,
+                loginEmail,
+                newRefreshTokenId,
+                accessExpiration,
+                refreshExpiration,
+                this.userRoleService.resolveRoleNamesByIds(user.getRoleIds())
+        );
     }
 
     public void logoutUser() {
@@ -148,11 +249,63 @@ public class UserAuthService {
         String refreshTokenId = UUID.randomUUID().toString();
         this.userRefreshTokenService.registerRefreshToken(refreshTokenId, user.getUserId(), clientApplication.getAppId(), refreshExpiration);
 
-        return this.jwtService.generateUserToken(user, loginEmail, refreshTokenId, accessExpiration, refreshExpiration);
+        return this.jwtService.generateUserToken(
+                user,
+                loginEmail,
+                refreshTokenId,
+                accessExpiration,
+                refreshExpiration,
+                this.userRoleService.resolveRoleNamesByIds(user.getRoleIds())
+        );
     }
 
-    private GoogleTokenInfoResponseDto verifyGoogleIdToken(String idToken) {
-        return this.googleTokenVerificationService.verifyIdToken(idToken, this.googleUserAudience);
+    private void ensureEmailVerified(Email loginEmail) {
+        if (!Boolean.TRUE.equals(loginEmail.getVerified())) {
+            throw new EmailNotVerifiedException();
+        }
+    }
+
+    private void ensureAccountEnabled(User user) {
+        if (AccountStatusUtils.isDisabled(user)) {
+            throw new AccountDisabledException();
+        }
+    }
+
+    private void ensureLoginNotThrottled(String action, String identifier) {
+        this.ensureIpNotThrottled("user-login-ip");
+        if (this.requestThrottleService.isThrottled(
+                action,
+                identifier,
+                resolveLimit(this.loginMaxAttempts, 10),
+                Duration.ofSeconds(resolveLimit(this.loginWindowSeconds, 900)),
+                Duration.ofSeconds(resolveLimit(this.loginMinIntervalSeconds, 1)))) {
+            throw new TooManyRequestsException();
+        }
+    }
+
+    private void ensureIpNotThrottled(String action) {
+        if (this.requestThrottleService.isThrottled(
+                action,
+                this.clientRequestContext.clientIp(),
+                resolveLimit(this.loginIpMaxAttempts, 30),
+                Duration.ofSeconds(resolveLimit(this.loginIpWindowSeconds, 900)),
+                Duration.ofSeconds(resolveLimit(this.loginIpMinIntervalSeconds, 1)))) {
+            throw new TooManyRequestsException();
+        }
+    }
+
+    private void recordLoginFailure(String action, String identifier) {
+        Duration window = Duration.ofSeconds(resolveLimit(this.loginWindowSeconds, 900));
+        this.requestThrottleService.recordAttempt(action, identifier, window);
+        this.requestThrottleService.recordAttempt(
+                "user-login-ip",
+                this.clientRequestContext.clientIp(),
+                Duration.ofSeconds(resolveLimit(this.loginIpWindowSeconds, 900))
+        );
+    }
+
+    private int resolveLimit(Integer configuredValue, int fallback) {
+        return configuredValue != null && configuredValue > 0 ? configuredValue : fallback;
     }
 
     private void syncGoogleVerifiedEmail(User user, Email loginEmail) {
@@ -172,7 +325,7 @@ public class UserAuthService {
             return clientApplication.getJwtExpirationInMinutes();
         }
 
-        return 24L * 60L;
+        return this.resolveDefaultAccessMinutes();
     }
 
     private long resolveRefreshTokenExpirationDays(ClientApplication clientApplication) {
@@ -189,6 +342,13 @@ public class UserAuthService {
         }
 
         return 30L;
+    }
+
+    private long resolveDefaultAccessMinutes() {
+        if (this.tokenExpirationMinutes != null && this.tokenExpirationMinutes > 0) {
+            return this.tokenExpirationMinutes;
+        }
+        return 15L;
     }
 
     private Email resolveLoginEmail(User user, String requestedEmail) {
@@ -227,9 +387,5 @@ public class UserAuthService {
                         && requestedEmail.equalsIgnoreCase(email.getEmail()))
                 .findFirst()
                 .orElseThrow(ApplicationAuthenticationFailedException::new);
-    }
-
-    private String normalize(String value) {
-        return value != null ? value.trim() : null;
     }
 }

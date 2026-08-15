@@ -21,7 +21,9 @@ public class UserController {
     }
 
     public User createUser(CreateUserRequestDto request) {
-        return this.userService.createUser(request);
+        User user = this.userService.createUser(request);
+        this.accountEmailService.sendUserVerificationEmailAfterCreate(user);
+        return user;
     }
 
     public User attachAddressToUser(String userId, CreateAddressRequestDto request) {
@@ -54,5 +56,21 @@ public class UserController {
 
     public void resetPassword(String token, String newPassword) {
         this.accountEmailService.resetUserPassword(token, newPassword);
+    }
+
+    public User findCurrentUser() {
+        return this.userService.findCurrentUser();
+    }
+
+    public User findUserById(String userId) {
+        return this.userService.findUserById(userId);
+    }
+
+    public User disableUser(String userId) {
+        return this.userService.disableUser(userId);
+    }
+
+    public User enableUser(String userId) {
+        return this.userService.enableUser(userId);
     }
 }

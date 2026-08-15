@@ -24,6 +24,7 @@ public record CreateClientApplicationRequestDto (
         Integer refreshTokenExpirationInDays,
         @NotEmpty(message = "Allowed origins list cannot be empty")
         List<String> allowedOrigins,
+        String googleAudience,
         List<UserRequiredField> requiredUserFields
 ) {
 }
