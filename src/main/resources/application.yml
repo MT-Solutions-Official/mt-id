@@ -38,7 +38,7 @@ quarkus:
     google-tokeninfo:
       url: ${APP_GOOGLE_TOKENINFO_URL:https://oauth2.googleapis.com}
     viacep:
-      url: ${APP_VIACEP_URL:https://viacep.com.br/ws}
+      url: ${APP_VIACEP_URL:https://viacep.com.br}
       scope: jakarta.inject.Singleton
       connect-timeout: 10000
       read-timeout: 10000

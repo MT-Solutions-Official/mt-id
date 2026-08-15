@@ -75,6 +75,7 @@ public class AddressService {
         } catch (WebApplicationException e) {
             String externalResponse = e.getResponse().readEntity(String.class);
             if (e.getResponse().getStatus() == 400) throw new ViaCepInvalidCepException(externalResponse);
+            if (e.getResponse().getStatus() == 404) throw new ViaCepCepNotFoundException();
             log.error("ViaCEP API error for CEP {}: {}", zipCode, e.getMessage());
             throw new ViaCepApiException(externalResponse);
         } catch (Exception e) {
