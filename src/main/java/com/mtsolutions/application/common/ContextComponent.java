@@ -36,6 +36,10 @@ public class ContextComponent {
         return role != null && this.identity.getRoles().contains(role);
     }
 
+    public boolean isOwnerActor() {
+        return this.hasRole("OWNER") || this.hasRole("OWNER_WRITER") || this.hasRole("OWNER_VIEWER");
+    }
+
     public String getRole() {
         if (this.hasRole("APPLICATION")) {
             return "APPLICATION";

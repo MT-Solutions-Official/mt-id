@@ -4,13 +4,14 @@ import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.resource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ClientApplicationController;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
-import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateAppOwnerRoleRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateClientApplicationSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
@@ -39,7 +40,7 @@ public class ClientApplicationResource {
     }
 
     @GET
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "List my client applications",
             description = "Returns the client applications owned by the authenticated owner. The API secret is never returned."
@@ -57,14 +58,14 @@ public class ClientApplicationResource {
     public Response listMine() {
         return Response.ok(
                 this.applicationController.listMyApplications().stream()
-                        .map(ClientApplicationResponseDto::new)
+                        .map(this.applicationController::toResponse)
                         .toList()
         ).build();
     }
 
     @GET
     @Path("/{appId}")
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Get a client application",
             description = "Returns a client application owned by the authenticated owner. The API secret is never returned."
@@ -80,16 +81,16 @@ public class ClientApplicationResource {
             )
     )
     public Response findById(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
-        return Response.ok(new ClientApplicationResponseDto(this.applicationController.findOwnedClientApplication(appId)))
+        return Response.ok(this.applicationController.toResponse(this.applicationController.findOwnedClientApplication(appId)))
                 .build();
     }
 
     @POST
     @Path("/create")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Create a new client application",
-            description = "Creates a new client application with the provided details. The API secret is returned only once."
+            description = "Creates a new client application. The authenticated owner becomes OWNER_WRITER on this app. The API secret is returned only once."
     )
     @RequestBody(
             content = @Content(
@@ -110,20 +111,20 @@ public class ClientApplicationResource {
                             value = ClientApplicationExamples.CLIENT_APPLICATION_CREATED)
             )
     )
-    public Response create(CreateClientApplicationRequestDto request) {
+    public Response create(@NotNull @Valid CreateClientApplicationRequestDto request) {
         var result = this.applicationController.createClientApplication(request);
 
         return Response.status(Response.Status.CREATED)
-                .entity(new ClientApplicationResponseDto(result.clientApplication(), result.apiSecret()))
+                .entity(this.applicationController.toResponse(result))
                 .build();
     }
 
     @PATCH
     @Path("/add-owner")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Add owners to a client application",
-            description = "Adds owners by owner ID and/or email. The authenticated owner must already own the application."
+            description = "Adds owners by owner ID and/or email with an optional per-app role (OWNER_WRITER or OWNER_VIEWER, default OWNER_VIEWER). The caller must be OWNER_WRITER on this application."
     )
     @RequestBody(
             content = @Content(
@@ -145,12 +146,37 @@ public class ClientApplicationResource {
                 .build();
     }
 
+    @PATCH
+    @Path("/{appId}/owners/{ownerId}")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(
+            summary = "Update an owner's role on a client application",
+            description = "Changes the membership role (OWNER_WRITER or OWNER_VIEWER) for this application only. The last OWNER_WRITER cannot be demoted."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Owner role updated",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Client application",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION)
+            )
+    )
+    public Response updateOwnerRole(@PathParam(RequestParams.APP_ID) @NotBlank String appId,
+                                    @PathParam(RequestParams.OWNER_ID) @NotBlank String ownerId,
+                                    @NotNull @Valid UpdateAppOwnerRoleRequestDto request) {
+        return Response.ok(this.applicationController.toResponse(
+                this.applicationController.updateOwnerRole(appId, ownerId, request.role())
+        )).build();
+    }
+
     @DELETE
     @Path("/{appId}/owners/{ownerId}")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Remove an owner from a client application",
-            description = "Removes an owner from the application. The last owner cannot be removed."
+            description = "Removes an owner from the application. The last owner and the last OWNER_WRITER cannot be removed."
     )
     @APIResponse(
             responseCode = "200",
@@ -164,14 +190,14 @@ public class ClientApplicationResource {
     )
     public Response removeOwner(@PathParam(RequestParams.APP_ID) @NotBlank String appId,
                                 @PathParam(RequestParams.OWNER_ID) @NotBlank String ownerId) {
-        return Response.ok(new ClientApplicationResponseDto(
+        return Response.ok(this.applicationController.toResponse(
                 this.applicationController.removeOwnerFromClientApplication(appId, ownerId)
         )).build();
     }
 
     @PATCH
     @Path("/required-user-fields")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Update required user fields for a client application",
             description = "Defines which user fields must be present when creating users for the given client application."
@@ -198,7 +224,7 @@ public class ClientApplicationResource {
 
     @PATCH
     @Path("/settings")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Update client application settings",
             description = "Updates branding, email settings, allowed origins, Google audience, required user fields and token TTLs. Only provided fields are changed. The API secret is never returned."
@@ -222,16 +248,16 @@ public class ClientApplicationResource {
             )
     )
     public Response updateSettings(@Valid UpdateClientApplicationSettingsRequestDto request) {
-        return Response.ok(new ClientApplicationResponseDto(this.applicationController.updateSettings(request)))
+        return Response.ok(this.applicationController.toResponse(this.applicationController.updateSettings(request)))
                 .build();
     }
 
     @PATCH
     @Path("/{appId}/disable")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Disable a client application",
-            description = "Disables the application. Existing application access tokens are rejected on subsequent requests."
+            description = "Disables the application, revokes all user refresh tokens for it, and blocks password, Google and APPLICATION logins. Existing APPLICATION and USER access tokens are rejected on subsequent requests."
     )
     @APIResponse(
             responseCode = "200",
@@ -244,13 +270,13 @@ public class ClientApplicationResource {
             )
     )
     public Response disable(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
-        return Response.ok(new ClientApplicationResponseDto(this.applicationController.disableClientApplication(appId)))
+        return Response.ok(this.applicationController.toResponse(this.applicationController.disableClientApplication(appId)))
                 .build();
     }
 
     @PATCH
     @Path("/{appId}/enable")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Enable a client application",
             description = "Re-enables a previously disabled client application."
@@ -266,13 +292,13 @@ public class ClientApplicationResource {
             )
     )
     public Response enable(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
-        return Response.ok(new ClientApplicationResponseDto(this.applicationController.enableClientApplication(appId)))
+        return Response.ok(this.applicationController.toResponse(this.applicationController.enableClientApplication(appId)))
                 .build();
     }
 
     @PATCH
     @Path("/{appId}/rotate-secret")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Rotate API secret as owner",
             description = "Rotates the API secret of an owned client application and returns the new secret only once."
@@ -289,7 +315,7 @@ public class ClientApplicationResource {
     )
     public Response rotateOwnedSecret(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
         var result = this.applicationController.rotateOwnedClientApplicationSecret(appId);
-        return Response.ok(new ClientApplicationResponseDto(result.clientApplication(), result.apiSecret())).build();
+        return Response.ok(this.applicationController.toResponse(result)).build();
     }
 
     @PATCH
@@ -313,7 +339,7 @@ public class ClientApplicationResource {
         var result = this.applicationController.rotateClientApplicationSecret();
 
         return Response.status(Response.Status.OK)
-                .entity(new ClientApplicationResponseDto(result.clientApplication(), result.apiSecret()))
+                .entity(this.applicationController.toResponse(result))
                 .build();
     }
 }

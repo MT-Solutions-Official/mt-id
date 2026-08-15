@@ -61,6 +61,7 @@ public class AddressService {
             ViaCepResponseDto response = this.viaCepClient.getAddress(zipCode);
             if (!response.isValid()) throw new ViaCepCepNotFoundException();
             return Address.builder()
+                    .country(Country.BR)
                     .zipCode(response.getZipCode())
                     .street(response.getStreet())
                     .neighborhood(response.getNeighborhood())

@@ -118,7 +118,8 @@ public class ClientApplicationExamples {
             {
                 "appId": "507f1f77bcf86cd799439011",
                 "ownerIds": ["507f1f77bcf86cd799439012"],
-                "emails": ["viewer@mtsolutions.com"]
+                "emails": ["viewer@mtsolutions.com"],
+                "role": "OWNER_VIEWER"
             }
             """;
 

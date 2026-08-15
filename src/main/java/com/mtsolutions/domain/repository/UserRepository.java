@@ -6,6 +6,7 @@ import io.quarkus.mongodb.panache.PanacheMongoRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.bson.types.ObjectId;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -42,5 +43,12 @@ public class UserRepository implements PanacheMongoRepositoryBase<User, String> 
 
     public Optional<User> findUserByPasswordResetToken(String token) {
         return find("password.passwordResetToken", token).firstResultOptional();
+    }
+
+    public List<User> findByAppId(String appId) {
+        if (appId == null || appId.isBlank()) {
+            return List.of();
+        }
+        return find("{appId: ?1}", appId).list();
     }
 }

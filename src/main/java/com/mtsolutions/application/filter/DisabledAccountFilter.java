@@ -57,7 +57,9 @@ public class DisabledAccountFilter implements ContainerRequestFilter {
             this.ensureUserEnabled();
             return;
         }
-        if (this.identity.getRoles().contains("OWNER_WRITER") || this.identity.getRoles().contains("OWNER_VIEWER")) {
+        if (this.identity.getRoles().contains("OWNER")
+                || this.identity.getRoles().contains("OWNER_WRITER")
+                || this.identity.getRoles().contains("OWNER_VIEWER")) {
             this.ensureOwnerEnabled();
             return;
         }
@@ -80,6 +82,7 @@ public class DisabledAccountFilter implements ContainerRequestFilter {
         if (disabled) {
             throw new AccountDisabledException();
         }
+        this.ensureApplicationEnabled();
     }
 
     private void ensureOwnerEnabled() {

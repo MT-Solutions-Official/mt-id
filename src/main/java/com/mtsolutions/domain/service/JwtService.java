@@ -1,6 +1,5 @@
 package com.mtsolutions.domain.service;
 
-import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.AppTokenResponseDto;
 import com.mtsolutions.domain.dto.response.OwnerTokenResponseDto;
 import com.mtsolutions.domain.dto.response.UserTokenResponseDto;
@@ -22,15 +21,14 @@ import java.util.Set;
 public class JwtService {
 
     private static final Set<String> RESERVED_GROUPS = Set.of(
-            "USER", "APPLICATION", "REFRESH_TOKEN", "OWNER_WRITER", "OWNER_VIEWER"
+            "USER", "APPLICATION", "REFRESH_TOKEN", "OWNER", "OWNER_WRITER", "OWNER_VIEWER"
     );
 
     @ConfigProperty(name = "mp.jwt.verify.issuer")
     String jwtIssuer;
 
     public OwnerTokenResponseDto generateOwnerToken(Owner owner, String refreshTokenId, Duration accessExpiration, Duration refreshExpiration) {
-        OwnerRole ownerRole = owner.getRole() != null ? owner.getRole() : OwnerRole.OWNER_VIEWER;
-        Set<String> groups = Set.of(ownerRole.name());
+        Set<String> groups = Set.of("OWNER");
 
         String accessToken = Jwt.issuer(jwtIssuer)
                 .subject(owner.getOwnerId())

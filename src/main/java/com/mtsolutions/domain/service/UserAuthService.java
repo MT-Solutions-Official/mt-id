@@ -105,6 +105,7 @@ public class UserAuthService {
         this.ensureLoginNotThrottled("user-login", throttleId);
 
         try {
+            this.requireActiveApplication(normalizedAppId);
             User user = this.userRepository.findUserByAppIdAndEmail(normalizedAppId, normalizedEmail)
                     .orElseThrow(ApplicationAuthenticationFailedException::new);
             Email loginEmail = this.resolveLoginEmail(user, normalizedEmail);
@@ -133,15 +134,7 @@ public class UserAuthService {
 
         this.ensureIpNotThrottled("user-login-ip");
 
-        ClientApplication clientApplication;
-        try {
-            clientApplication = this.clientApplicationRepository.findClientApplicationById(normalizedAppId);
-        } catch (ClientApplicationNotFoundException e) {
-            throw new ApplicationAuthenticationFailedException();
-        }
-        if (Boolean.FALSE.equals(clientApplication.getActive())) {
-            throw new ApplicationAuthenticationFailedException();
-        }
+        ClientApplication clientApplication = this.requireActiveApplication(normalizedAppId);
 
         String audience = NormalizeUtils.trimToNull(clientApplication.getGoogleAudience());
         if (audience == null) {
@@ -201,8 +194,7 @@ public class UserAuthService {
             throw new ApplicationAuthenticationFailedException();
         }
         this.ensureAccountEnabled(user);
-
-        ClientApplication clientApplication = this.clientApplicationRepository.findClientApplicationById(appId);
+        ClientApplication clientApplication = this.requireActiveApplication(appId);
         Email loginEmail = this.resolveRefreshEmail(user, email);
 
         this.userRefreshTokenService.validateActiveRefreshToken(refreshTokenId, userId, appId);
@@ -269,6 +261,19 @@ public class UserAuthService {
         if (AccountStatusUtils.isDisabled(user)) {
             throw new AccountDisabledException();
         }
+    }
+
+    private ClientApplication requireActiveApplication(String appId) {
+        ClientApplication clientApplication;
+        try {
+            clientApplication = this.clientApplicationRepository.findClientApplicationById(appId);
+        } catch (ClientApplicationNotFoundException e) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+        if (Boolean.FALSE.equals(clientApplication.getActive())) {
+            throw new ApplicationAuthenticationFailedException();
+        }
+        return clientApplication;
     }
 
     private void ensureLoginNotThrottled(String action, String identifier) {

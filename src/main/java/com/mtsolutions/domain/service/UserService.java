@@ -5,6 +5,7 @@ import com.mtsolutions.application.cache.AccountStatusCache;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.constant.CloudinaryFolder;
 import com.mtsolutions.application.service.CloudinaryService;
+import com.mtsolutions.application.exception.ApplicationAuthenticationFailedException;
 import com.mtsolutions.application.exception.EmailAlreadyExistsException;
 import com.mtsolutions.application.exception.RequiredUserFieldMissingException;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
@@ -19,6 +20,7 @@ import com.mtsolutions.domain.dto.request.CreateDocumentRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
 import com.mtsolutions.domain.dto.request.GenerateUserGoogleTokenRequestDto;
 import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateUserRequestDto;
 import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.User;
@@ -41,6 +43,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -56,6 +59,7 @@ public class UserService {
     private final BcryptService bcryptService;
     private final PasswordPolicyService passwordPolicyService;
     private final UserRefreshTokenService userRefreshTokenService;
+    private final AccountEmailService accountEmailService;
     private final AccountStatusCache accountStatusCache;
     private final DateUtils dateUtils;
     private final ContextComponent contextComponent;
@@ -68,6 +72,7 @@ public class UserService {
                        BcryptService bcryptService,
                        PasswordPolicyService passwordPolicyService,
                        UserRefreshTokenService userRefreshTokenService,
+                       AccountEmailService accountEmailService,
                        AccountStatusCache accountStatusCache,
                        DateUtils dateUtils,
                        ContextComponent contextComponent) {
@@ -79,6 +84,7 @@ public class UserService {
         this.bcryptService = bcryptService;
         this.passwordPolicyService = passwordPolicyService;
         this.userRefreshTokenService = userRefreshTokenService;
+        this.accountEmailService = accountEmailService;
         this.accountStatusCache = accountStatusCache;
         this.dateUtils = dateUtils;
         this.contextComponent = contextComponent;
@@ -175,6 +181,42 @@ public class UserService {
             throw new ApplicationForbiddenException();
         }
         return this.findUserById(userId);
+    }
+
+    public List<User> listUsersForCurrentApplication() {
+        this.validateApplicationAccess();
+        return this.userRepository.findByAppId(this.contextComponent.getAuthenticatedAppId());
+    }
+
+    public User updateCurrentUser(UpdateUserRequestDto request) {
+        User user = this.findCurrentUser();
+        boolean emailChanged = false;
+        boolean passwordChanged = false;
+
+        if (this.hasText(request.name())) {
+            user.setName(request.name().trim());
+        }
+        if (this.hasText(request.email())) {
+            emailChanged = this.applyPrimaryEmailChange(user, request.email());
+        }
+        if (this.hasText(request.newPassword())) {
+            this.applyPasswordChange(user, request.currentPassword(), request.newPassword());
+            passwordChanged = true;
+        }
+
+        user.setUpdatedAt(this.dateUtils.now());
+        this.userRepository.persistOrUpdate(user);
+
+        if (emailChanged) {
+            this.accountEmailService.sendUserVerificationEmailAfterCreate(user);
+        }
+        if (passwordChanged) {
+            this.userRefreshTokenService.revokeAllForUser(user.getUserId(), user.getAppId());
+            this.accountEmailService.notifyUserPasswordChanged(user);
+        }
+
+        log.info("User profile updated with ID: {}", user.getUserId());
+        return user;
     }
 
     public User findUserById(String userId) {
@@ -523,6 +565,74 @@ public class UserService {
                         request.passport()
                 )
                 .anyMatch(this::hasText);
+    }
+
+    private boolean applyPrimaryEmailChange(User user, String rawEmail) {
+        String normalizedEmail = NormalizeUtils.normalizeEmail(rawEmail);
+        if (normalizedEmail == null) {
+            throw new BadRequestException("Email should be valid");
+        }
+        if (normalizedEmail.equalsIgnoreCase(user.getPrimaryEmail())) {
+            return false;
+        }
+
+        Optional<User> existing = this.userRepository.findUserByAppIdAndEmail(user.getAppId(), normalizedEmail);
+        if (existing.isPresent() && !user.getUserId().equals(existing.get().getUserId())) {
+            throw new EmailAlreadyExistsException();
+        }
+
+        List<Email> emails = user.getEmails() == null ? new ArrayList<>() : new ArrayList<>(user.getEmails());
+        user.setEmails(emails);
+
+        Email matching = emails.stream()
+                .filter(email -> email != null && normalizedEmail.equalsIgnoreCase(email.getEmail()))
+                .findFirst()
+                .orElse(null);
+        Email currentPrimary = emails.stream()
+                .filter(email -> email != null && Boolean.TRUE.equals(email.getPrimary()))
+                .findFirst()
+                .orElse(null);
+
+        for (Email email : emails) {
+            if (email != null) {
+                email.setPrimary(false);
+            }
+        }
+
+        Email nextPrimary = matching != null ? matching : currentPrimary;
+        if (nextPrimary == null) {
+            nextPrimary = Email.builder().build();
+            emails.add(nextPrimary);
+        }
+        nextPrimary.setEmail(normalizedEmail);
+        nextPrimary.setPrimary(true);
+        nextPrimary.setVerified(false);
+        nextPrimary.setVerificationToken(null);
+        nextPrimary.setVerificationTokenExpiry(null);
+        user.setPrimaryEmail(normalizedEmail);
+        return true;
+    }
+
+    private void applyPasswordChange(User user, String currentPassword, String newPassword) {
+        this.passwordPolicyService.validate(newPassword);
+        boolean hasPassword = user.getPassword() != null && this.hasText(user.getPassword().getPassword());
+        if (hasPassword) {
+            if (!this.hasText(currentPassword)) {
+                throw new BadRequestException("Current password is required.");
+            }
+            if (!this.bcryptService.verifyPassword(currentPassword, user.getPassword().getPassword())) {
+                throw new ApplicationAuthenticationFailedException();
+            }
+        }
+
+        String encryptedPassword = this.bcryptService.encryptPassword(newPassword);
+        if (user.getPassword() == null) {
+            user.setPassword(Password.builder().password(encryptedPassword).build());
+            return;
+        }
+        user.getPassword().setPassword(encryptedPassword);
+        user.getPassword().setPasswordResetToken(null);
+        user.getPassword().setPasswordResetTokenExpiry(null);
     }
 
     private boolean hasText(String value) {

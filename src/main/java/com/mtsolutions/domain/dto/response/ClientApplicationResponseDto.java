@@ -3,7 +3,6 @@ package com.mtsolutions.domain.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mtsolutions.domain.constant.UserRequiredField;
 import com.mtsolutions.domain.entity.ClientApplication;
-import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.model.EmailSettings;
 
 import java.time.LocalDateTime;
@@ -23,18 +22,16 @@ public record ClientApplicationResponseDto(
         List<String> allowedOrigins,
         String googleAudience,
         List<UserRequiredField> requiredUserFields,
-        List<OwnerResponseDto> owners,
+        List<AppOwnerResponseDto> owners,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         Boolean active
 ) {
 
-    public ClientApplicationResponseDto(ClientApplication clientApplication) {
-        this(clientApplication, null);
-    }
-
-    public ClientApplicationResponseDto(ClientApplication clientApplication, String apiSecret) {
-        this(
+    public static ClientApplicationResponseDto from(ClientApplication clientApplication,
+                                                    List<AppOwnerResponseDto> owners,
+                                                    String apiSecret) {
+        return new ClientApplicationResponseDto(
                 clientApplication.getAppId(),
                 clientApplication.getName(),
                 clientApplication.getDescription(),
@@ -47,17 +44,10 @@ public record ClientApplicationResponseDto(
                 clientApplication.getAllowedOrigins(),
                 clientApplication.getGoogleAudience(),
                 clientApplication.getRequiredUserFields(),
-                mapOwners(clientApplication.getOwners()),
+                owners != null ? owners : List.of(),
                 clientApplication.getCreatedAt(),
                 clientApplication.getUpdatedAt(),
                 clientApplication.getActive()
         );
-    }
-
-    private static List<OwnerResponseDto> mapOwners(List<Owner> owners) {
-        if (owners == null || owners.isEmpty()) {
-            return List.of();
-        }
-        return owners.stream().map(OwnerResponseDto::new).toList();
     }
 }

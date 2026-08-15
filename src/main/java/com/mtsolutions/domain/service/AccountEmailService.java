@@ -14,6 +14,7 @@ import com.mtsolutions.application.utils.NormalizeUtils;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.entity.User;
+import com.mtsolutions.domain.model.AppOwnerAccess;
 import com.mtsolutions.domain.model.Email;
 import com.mtsolutions.domain.model.Password;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
@@ -104,6 +105,18 @@ public class AccountEmailService {
             this.sendUserVerificationEmail(user.getUserId(), user.getPrimaryEmail(), false, true);
         } catch (RuntimeException e) {
             log.error("Failed to send verification email after user create", e);
+        }
+    }
+
+    public void notifyUserPasswordChanged(User user) {
+        if (user == null) {
+            return;
+        }
+        try {
+            String primaryEmail = resolvePrimaryUserEmail(user);
+            notifyPasswordChanged(user.getAppId(), primaryEmail, resolveDisplayName(user.getName(), primaryEmail));
+        } catch (RuntimeException e) {
+            log.error("Failed to send password-changed email after user profile update", e);
         }
     }
 
@@ -469,14 +482,19 @@ public class AccountEmailService {
     }
 
     private void validateOwnerEmailAccess(String ownerId) {
-        if (this.contextComponent.hasRole("OWNER_WRITER")) {
-            return;
-        }
         String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
         if (authenticatedOwnerId != null && authenticatedOwnerId.equals(ownerId)) {
             return;
         }
-        throw new ApplicationForbiddenException();
+        if (!this.contextComponent.isOwnerActor()) {
+            throw new ApplicationForbiddenException();
+        }
+        boolean writerOnSharedApp = this.clientApplicationRepository.findByOwnerId(authenticatedOwnerId).stream()
+                .anyMatch(application -> AppOwnerAccess.isWriter(application, authenticatedOwnerId)
+                        && AppOwnerAccess.isMember(application, ownerId));
+        if (!writerOnSharedApp) {
+            throw new ApplicationForbiddenException();
+        }
     }
 
     private void dispatchEmail(boolean bestEffort, Runnable sender) {

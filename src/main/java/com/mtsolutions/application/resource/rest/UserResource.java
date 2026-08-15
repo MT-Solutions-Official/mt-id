@@ -10,6 +10,7 @@ import com.mtsolutions.domain.dto.request.ForgotPasswordRequestDto;
 import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
 import com.mtsolutions.domain.dto.request.ResetPasswordRequestDto;
 import com.mtsolutions.domain.dto.request.SendEmailVerificationRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateUserRequestDto;
 import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.dto.response.UserResponseDto;
 import com.mtsolutions.domain.entity.User;
@@ -68,6 +69,55 @@ public class UserResource {
     )
     public Response me() {
         return Response.ok(new UserResponseDto(this.userController.findCurrentUser())).build();
+    }
+
+    @PATCH
+    @Path("/me")
+    @RolesAllowed("USER")
+    @Operation(
+            summary = "Update the authenticated user",
+            description = "Updates name, primary email and/or password of the current user. Partial. Changing email un-verifies it and sends a verification message. Changing password revokes refresh tokens. Users that already have a password must send currentPassword."
+    )
+    @RequestBody(
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Update current user",
+                            value = UserExamples.UPDATE_USER)
+            )
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Current user updated",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Updated user",
+                            value = UserExamples.USER_CREATED)
+            )
+    )
+    public Response updateMe(@NotNull @Valid UpdateUserRequestDto request) {
+        return Response.ok(new UserResponseDto(this.userController.updateCurrentUser(request))).build();
+    }
+
+    @GET
+    @RolesAllowed("APPLICATION")
+    @Operation(
+            summary = "List users of the authenticated application",
+            description = "Returns every user that belongs to the app_id of the APPLICATION token."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Users",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Users",
+                            value = UserExamples.USERS_LIST)
+            )
+    )
+    public Response list() {
+        return Response.ok(this.userController.listUsers().stream().map(UserResponseDto::new).toList()).build();
     }
 
     @GET

@@ -1,9 +1,11 @@
 package com.mtsolutions.domain.controller;
 
+import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateClientApplicationSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
+import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.model.ClientApplicationSecretResult;
 import com.mtsolutions.domain.service.ClientApplicationService;
@@ -38,6 +40,18 @@ public class ClientApplicationController {
 
     public ClientApplication removeOwnerFromClientApplication(String appId, String ownerId) {
         return this.clientApplicationService.removeOwnerFromClientApplication(appId, ownerId);
+    }
+
+    public ClientApplication updateOwnerRole(String appId, String ownerId, OwnerRole role) {
+        return this.clientApplicationService.updateOwnerRole(appId, ownerId, role);
+    }
+
+    public ClientApplicationResponseDto toResponse(ClientApplication clientApplication) {
+        return this.clientApplicationService.toResponse(clientApplication);
+    }
+
+    public ClientApplicationResponseDto toResponse(ClientApplicationSecretResult result) {
+        return this.clientApplicationService.toResponse(result.clientApplication(), result.apiSecret());
     }
 
     public void updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {

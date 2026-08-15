@@ -17,4 +17,11 @@ public class UserRefreshTokenRepository implements PanacheMongoRepositoryBase<Us
     public List<UserRefreshToken> findActiveByUserIdAndAppId(String userId, String appId) {
         return find("{userId: ?1, appId: ?2, revokedAt: null}", userId, appId).list();
     }
+
+    public List<UserRefreshToken> findActiveByAppId(String appId) {
+        if (appId == null || appId.isBlank()) {
+            return List.of();
+        }
+        return find("{appId: ?1, revokedAt: null}", appId).list();
+    }
 }

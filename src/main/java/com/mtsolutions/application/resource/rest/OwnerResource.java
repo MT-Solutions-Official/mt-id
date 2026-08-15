@@ -2,11 +2,15 @@ package com.mtsolutions.application.resource.rest;
 
 import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.resource.rest.examples.OwnerExamples;
+import com.mtsolutions.domain.constant.ImageType;
 import com.mtsolutions.domain.controller.OwnerController;
+import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.dto.request.CreateOwnerRequestDto;
 import com.mtsolutions.domain.dto.request.OwnerForgotPasswordRequestDto;
 import com.mtsolutions.domain.dto.request.ResetPasswordRequestDto;
 import com.mtsolutions.domain.dto.request.SendEmailVerificationRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateOwnerRequestDto;
+import com.mtsolutions.domain.dto.request.UploadOwnerImageRequestDto;
 import com.mtsolutions.domain.dto.response.OwnerResponseDto;
 import com.mtsolutions.domain.entity.Owner;
 import jakarta.annotation.security.PermitAll;
@@ -15,6 +19,8 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
@@ -29,6 +35,8 @@ import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 @RequestScoped
 @Path("/api/v1/owner")
@@ -43,7 +51,7 @@ public class OwnerResource {
 
     @GET
     @Path("/me")
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Get the authenticated owner",
             description = "Returns the profile of the owner identified by the access token."
@@ -62,91 +70,60 @@ public class OwnerResource {
         return Response.ok(new OwnerResponseDto(this.ownerController.findCurrentOwner())).build();
     }
 
-    @GET
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
-    @Operation(
-            summary = "List owners",
-            description = "Returns all platform owners. Intended for the MT-ID console."
-    )
-    @APIResponse(
-            responseCode = "200",
-            description = "Owners",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    examples = @ExampleObject(
-                            name = "Owners",
-                            value = OwnerExamples.OWNER_LIST)
-            )
-    )
-    public Response list() {
-        return Response.ok(
-                this.ownerController.listOwners().stream()
-                        .map(OwnerResponseDto::new)
-                        .toList()
-        ).build();
-    }
-
-    @GET
-    @Path("/{ownerId}")
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
-    @Operation(
-            summary = "Get owner by ID",
-            description = "Returns a platform owner by ID."
-    )
-    @APIResponse(
-            responseCode = "200",
-            description = "Owner",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    examples = @ExampleObject(
-                            name = "Owner",
-                            value = OwnerExamples.OWNER_CREATED)
-            )
-    )
-    public Response findById(@PathParam(RequestParams.OWNER_ID) String ownerId) {
-        return Response.ok(new OwnerResponseDto(this.ownerController.findOwnerForConsole(ownerId))).build();
+    @PATCH
+    @Path("/me")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(summary = "Update the authenticated owner", description = "Updates name, phone and document of the current owner.")
+    @APIResponse(responseCode = "200", description = "Owner updated")
+    public Response updateMe(@NotNull @Valid UpdateOwnerRequestDto request) {
+        return Response.ok(new OwnerResponseDto(this.ownerController.updateCurrentOwner(request))).build();
     }
 
     @PATCH
-    @Path("/{ownerId}/disable")
-    @RolesAllowed("OWNER_WRITER")
-    @Operation(
-            summary = "Disable owner",
-            description = "Disables another owner. An owner cannot disable themselves."
-    )
-    @APIResponse(
-            responseCode = "200",
-            description = "Owner disabled",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    examples = @ExampleObject(
-                            name = "Disabled owner",
-                            value = OwnerExamples.OWNER_CREATED)
-            )
-    )
-    public Response disable(@PathParam(RequestParams.OWNER_ID) String ownerId) {
-        return Response.ok(new OwnerResponseDto(this.ownerController.disableOwner(ownerId))).build();
+    @Path("/me/address")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(summary = "Attach address to the authenticated owner", description = "Appends a complete address. Use GET /addresses/{country}/{zipCode} to look up street/city first.")
+    @APIResponse(responseCode = "200", description = "Address attached")
+    public Response attachAddress(@NotNull @Valid CreateAddressRequestDto request) {
+        return Response.ok(new OwnerResponseDto(this.ownerController.attachAddressToCurrentOwner(request))).build();
     }
 
-    @PATCH
-    @Path("/{ownerId}/enable")
-    @RolesAllowed("OWNER_WRITER")
-    @Operation(
-            summary = "Enable owner",
-            description = "Re-enables a previously disabled owner."
-    )
-    @APIResponse(
-            responseCode = "200",
-            description = "Owner enabled",
-            content = @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    examples = @ExampleObject(
-                            name = "Enabled owner",
-                            value = OwnerExamples.OWNER_CREATED)
-            )
-    )
-    public Response enable(@PathParam(RequestParams.OWNER_ID) String ownerId) {
-        return Response.ok(new OwnerResponseDto(this.ownerController.enableOwner(ownerId))).build();
+    @DELETE
+    @Path("/me/address/{addressIndex}")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(summary = "Remove address from the authenticated owner")
+    @APIResponse(responseCode = "204", description = "Address removed")
+    public Response removeAddress(@PathParam(RequestParams.ADDRESS_INDEX) Integer addressIndex) {
+        this.ownerController.removeAddressFromCurrentOwner(addressIndex);
+        return Response.noContent().build();
+    }
+
+    @POST
+    @Path("/me/images/{imageType}")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(summary = "Upload owner image", description = "Uploads a profile picture to Cloudinary.")
+    @APIResponse(responseCode = "200", description = "Image uploaded")
+    public Response uploadImage(@PathParam(RequestParams.IMAGE_TYPE) ImageType imageType,
+                                @RestForm("image") FileUpload image) {
+        Owner owner = this.ownerController.uploadCurrentOwnerImage(new UploadOwnerImageRequestDto(
+                imageType,
+                image.uploadedFile(),
+                image.fileName(),
+                image.size(),
+                image.contentType()
+        ));
+        return Response.ok(new OwnerResponseDto(owner)).build();
+    }
+
+    @DELETE
+    @Path("/me/images/{imageType}")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(summary = "Remove owner image")
+    @APIResponse(responseCode = "204", description = "Image removed")
+    public Response removeImage(@PathParam(RequestParams.IMAGE_TYPE) ImageType imageType) {
+        this.ownerController.removeCurrentOwnerImage(imageType);
+        return Response.noContent().build();
     }
 
     @POST
@@ -154,7 +131,7 @@ public class OwnerResource {
     @PermitAll
     @Operation(
             summary = "Create a new owner",
-            description = "Creates the first platform owner when none exist (bootstrap as OWNER_WRITER). After that, only an authenticated OWNER_WRITER can create additional owners, which default to OWNER_VIEWER unless a role is provided. A verification email is sent after creation."
+            description = "Public signup. The first owner has email already verified. Writer and viewer roles belong to each application, not to this account. Address is required. A verification email is sent when the email is not already verified."
     )
     @RequestBody(
             content = @Content(
@@ -185,7 +162,7 @@ public class OwnerResource {
 
     @POST
     @Path("/{ownerId}/email/verification/send")
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Send owner email verification",
             description = "Generates a verification token and sends an email to the owner email."

@@ -39,7 +39,7 @@ public class UserRoleResource {
 
     @POST
     @Path("/app/{appId}/create")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Create a new user role",
             description = "Creates a new role for a specific client application."
@@ -74,7 +74,7 @@ public class UserRoleResource {
 
     @GET
     @Path("/{userRoleId}")
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Find user role by ID",
             description = "Finds a user role by ID."
@@ -99,7 +99,7 @@ public class UserRoleResource {
 
     @GET
     @Path("/app/{appId}")
-    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Find user roles by application",
             description = "Finds all user roles for a specific application."
@@ -124,7 +124,7 @@ public class UserRoleResource {
 
     @PATCH
     @Path("/app/{appId}/update")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Update user role",
             description = "Updates a user role name."
@@ -159,7 +159,7 @@ public class UserRoleResource {
 
     @DELETE
     @Path("/{userRoleId}")
-    @RolesAllowed("OWNER_WRITER")
+    @RolesAllowed({"OWNER", "OWNER_WRITER", "OWNER_VIEWER"})
     @Operation(
             summary = "Delete user role",
             description = "Deletes a user role by ID."

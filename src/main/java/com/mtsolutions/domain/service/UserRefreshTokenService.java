@@ -65,6 +65,12 @@ public class UserRefreshTokenService {
         }
     }
 
+    public void revokeAllForApp(String appId) {
+        for (UserRefreshToken refreshToken : this.userRefreshTokenRepository.findActiveByAppId(appId)) {
+            this.markRevoked(refreshToken);
+        }
+    }
+
     private void markRevoked(UserRefreshToken refreshToken) {
         if (refreshToken.getRevokedAt() == null) {
             refreshToken.setRevokedAt(this.dateUtils.now());

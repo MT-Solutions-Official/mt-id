@@ -1,12 +1,14 @@
 package com.mtsolutions.domain.controller;
 
+import com.mtsolutions.domain.constant.ImageType;
+import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.dto.request.CreateOwnerRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateOwnerRequestDto;
+import com.mtsolutions.domain.dto.request.UploadOwnerImageRequestDto;
 import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.service.AccountEmailService;
 import com.mtsolutions.domain.service.OwnerService;
 import jakarta.enterprise.context.ApplicationScoped;
-
-import java.util.List;
 
 @ApplicationScoped
 public class OwnerController {
@@ -45,19 +47,23 @@ public class OwnerController {
         return this.ownerService.findCurrentOwner();
     }
 
-    public List<Owner> listOwners() {
-        return this.ownerService.listOwners();
+    public Owner updateCurrentOwner(UpdateOwnerRequestDto request) {
+        return this.ownerService.updateCurrentOwner(request);
     }
 
-    public Owner findOwnerForConsole(String ownerId) {
-        return this.ownerService.findOwnerForConsole(ownerId);
+    public Owner attachAddressToCurrentOwner(CreateAddressRequestDto request) {
+        return this.ownerService.attachAddressToCurrentOwner(request);
     }
 
-    public Owner disableOwner(String ownerId) {
-        return this.ownerService.disableOwner(ownerId);
+    public Owner removeAddressFromCurrentOwner(Integer addressIndex) {
+        return this.ownerService.removeAddressFromCurrentOwner(addressIndex);
     }
 
-    public Owner enableOwner(String ownerId) {
-        return this.ownerService.enableOwner(ownerId);
+    public Owner uploadCurrentOwnerImage(UploadOwnerImageRequestDto request) {
+        return this.ownerService.uploadCurrentOwnerImage(request);
+    }
+
+    public Owner removeCurrentOwnerImage(ImageType imageType) {
+        return this.ownerService.removeCurrentOwnerImage(imageType);
     }
 }

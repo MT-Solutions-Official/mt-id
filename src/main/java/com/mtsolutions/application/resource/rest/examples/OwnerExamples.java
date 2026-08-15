@@ -12,7 +12,16 @@ public class OwnerExamples {
                 "cpf": "12345678900",
                 "cnpj": "12345678000190"
               },
-              "role": "OWNER_VIEWER"
+              "address": {
+                "country": "BR",
+                "zipCode": "01310100",
+                "street": "Avenida Paulista",
+                "number": "1578",
+                "complement": "Conjunto 101",
+                "neighborhood": "Bela Vista",
+                "city": "São Paulo",
+                "state": "SP"
+              }
             }
             """;
 
@@ -32,26 +41,22 @@ public class OwnerExamples {
                 "cpf": "12345678900",
                 "cnpj": "12345678000190"
               },
-              "role": "OWNER_WRITER",
+              "addresses": [
+                {
+                  "country": "BR",
+                  "zipCode": "01310100",
+                  "street": "Avenida Paulista",
+                  "number": "1578",
+                  "complement": "Conjunto 101",
+                  "neighborhood": "Bela Vista",
+                  "city": "São Paulo",
+                  "state": "SP"
+                }
+              ],
               "createdAt": "2026-07-02T14:12:38.000Z",
               "updatedAt": "2026-07-02T14:12:38.000Z",
               "active": true
             }
-            """;
-
-    public static final String OWNER_LIST = """
-            [
-              {
-                "ownerId": "64a7f8b9c0e2a1b3d4f5e6a7",
-                "name": "Thiago Picanço",
-                "email": {
-                  "email": "thiago@mtsolutions.com",
-                  "verified": true
-                },
-                "role": "OWNER_WRITER",
-                "active": true
-              }
-            ]
             """;
 
     public static final String SEND_EMAIL_VERIFICATION = """

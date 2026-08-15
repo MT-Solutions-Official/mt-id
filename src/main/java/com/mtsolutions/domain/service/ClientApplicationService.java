@@ -8,13 +8,18 @@ import com.mtsolutions.application.exception.OwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
 import com.mtsolutions.application.utils.NormalizeUtils;
+import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.EmailSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateClientApplicationSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
+import com.mtsolutions.domain.dto.response.AppOwnerResponseDto;
+import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;
 import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.Owner;
+import com.mtsolutions.domain.model.AppOwnerAccess;
+import com.mtsolutions.domain.model.AppOwnerMembership;
 import com.mtsolutions.domain.model.ClientApplicationSecretResult;
 import com.mtsolutions.domain.model.EmailSettings;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
@@ -39,6 +44,7 @@ public class ClientApplicationService {
     private final ContextComponent contextComponent;
     private final AllowedOriginCache allowedOriginCache;
     private final AccountStatusCache accountStatusCache;
+    private final UserRefreshTokenService userRefreshTokenService;
 
     public ClientApplicationService(ClientApplicationRepository clientApplicationRepository,
                                     OwnerService ownerService,
@@ -47,7 +53,8 @@ public class ClientApplicationService {
                                     DateUtils dateUtils,
                                     ContextComponent contextComponent,
                                     AllowedOriginCache allowedOriginCache,
-                                    AccountStatusCache accountStatusCache) {
+                                    AccountStatusCache accountStatusCache,
+                                    UserRefreshTokenService userRefreshTokenService) {
         this.clientApplicationRepository = clientApplicationRepository;
         this.ownerService = ownerService;
         this.keyGeneratorUtils = keyGeneratorUtils;
@@ -56,12 +63,17 @@ public class ClientApplicationService {
         this.contextComponent = contextComponent;
         this.allowedOriginCache = allowedOriginCache;
         this.accountStatusCache = accountStatusCache;
+        this.userRefreshTokenService = userRefreshTokenService;
     }
 
     public ClientApplicationSecretResult createClientApplication(CreateClientApplicationRequestDto request) {
         log.info("Creating client application with name: {}", request.name());
 
-        this.validateOwnerWriteAccess(request.ownerId(), null);
+        this.requireAuthenticatedOwner();
+        String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
+        if (!authenticatedOwnerId.equals(request.ownerId())) {
+            throw new ApplicationForbiddenException();
+        }
 
         Owner owner = this.ownerService.findOwnerById(request.ownerId());
         String apiKey = this.keyGeneratorUtils.generateApiKey();
@@ -69,7 +81,10 @@ public class ClientApplicationService {
         String hashedApiSecret = this.bcryptService.encryptPassword(apiSecret);
 
         ClientApplication clientApplication = ClientApplication.builder()
-                .owners(new ArrayList<>(List.of(owner)))
+                .owners(new ArrayList<>(List.of(AppOwnerMembership.builder()
+                        .ownerId(owner.getOwnerId())
+                        .role(OwnerRole.OWNER_WRITER)
+                        .build())))
                 .name(request.name())
                 .description(request.description())
                 .logoUrl(request.logoUrl())
@@ -109,14 +124,18 @@ public class ClientApplicationService {
 
     public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
-        this.validateOwnerWriteAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(clientApplication);
         if (clientApplication.getOwners() == null) {
             clientApplication.setOwners(new ArrayList<>());
         }
 
+        OwnerRole membershipRole = request.role() != null ? request.role() : OwnerRole.OWNER_VIEWER;
         for (Owner owner : this.resolveOwnersToAdd(request)) {
             if (clientApplication.getOwners().stream().noneMatch(existing -> existing.getOwnerId().equals(owner.getOwnerId()))) {
-                clientApplication.getOwners().add(owner);
+                clientApplication.getOwners().add(AppOwnerMembership.builder()
+                        .ownerId(owner.getOwnerId())
+                        .role(membershipRole)
+                        .build());
             }
         }
 
@@ -128,16 +147,20 @@ public class ClientApplicationService {
 
     public ClientApplication removeOwnerFromClientApplication(String appId, String ownerId) {
         ClientApplication clientApplication = this.findClientApplicationById(appId);
-        this.validateOwnerWriteAccess(null, clientApplication);
-        List<Owner> owners = clientApplication.getOwners();
+        this.validateOwnerWriteAccess(clientApplication);
+        List<AppOwnerMembership> owners = clientApplication.getOwners();
+        AppOwnerMembership membership = AppOwnerAccess.membership(clientApplication, ownerId);
+        if (membership == null) {
+            throw new OwnerNotFoundException();
+        }
         if (owners == null || owners.size() <= 1) {
             throw new BadRequestException("Cannot remove the last owner of the application.");
         }
-
-        boolean removed = owners.removeIf(owner -> ownerId.equals(owner.getOwnerId()));
-        if (!removed) {
-            throw new OwnerNotFoundException();
+        if (membership.getRole() == OwnerRole.OWNER_WRITER && AppOwnerAccess.writerCount(clientApplication) <= 1) {
+            throw new BadRequestException("Cannot remove the last writer of the application.");
         }
+
+        owners.removeIf(owner -> ownerId.equals(owner.getOwnerId()));
 
         clientApplication.setUpdatedAt(this.dateUtils.now());
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
@@ -147,7 +170,7 @@ public class ClientApplicationService {
 
     public void updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
-        this.validateOwnerWriteAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(clientApplication);
         clientApplication.setRequiredUserFields(request.requiredUserFields() != null ? request.requiredUserFields() : new ArrayList<>());
         clientApplication.setUpdatedAt(this.dateUtils.now());
 
@@ -158,7 +181,7 @@ public class ClientApplicationService {
 
     public ClientApplication updateSettings(UpdateClientApplicationSettingsRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
-        this.validateOwnerWriteAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(clientApplication);
         if (request.name() != null) {
             String name = NormalizeUtils.trimToNull(request.name());
             if (name == null) {
@@ -202,19 +225,20 @@ public class ClientApplicationService {
 
     public ClientApplication disableClientApplication(String appId) {
         ClientApplication clientApplication = this.findClientApplicationById(appId);
-        this.validateOwnerWriteAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(clientApplication);
         clientApplication.setActive(false);
         clientApplication.setUpdatedAt(this.dateUtils.now());
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
         this.allowedOriginCache.invalidate(clientApplication.getAppId());
         this.accountStatusCache.putApplicationDisabled(clientApplication.getAppId(), true);
+        this.userRefreshTokenService.revokeAllForApp(clientApplication.getAppId());
         log.info("Client application disabled with ID: {}", appId);
         return clientApplication;
     }
 
     public ClientApplication enableClientApplication(String appId) {
         ClientApplication clientApplication = this.findClientApplicationById(appId);
-        this.validateOwnerWriteAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(clientApplication);
         clientApplication.setActive(true);
         clientApplication.setUpdatedAt(this.dateUtils.now());
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
@@ -233,8 +257,47 @@ public class ClientApplicationService {
 
     public ClientApplicationSecretResult rotateOwnedClientApplicationSecret(String appId) {
         ClientApplication clientApplication = this.findClientApplicationById(appId);
-        this.validateOwnerWriteAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(clientApplication);
         return this.rotateSecret(clientApplication);
+    }
+
+    public ClientApplication updateOwnerRole(String appId, String ownerId, OwnerRole role) {
+        ClientApplication clientApplication = this.findClientApplicationById(appId);
+        this.validateOwnerWriteAccess(clientApplication);
+        if (role == null) {
+            throw new BadRequestException("Role is required.");
+        }
+        AppOwnerMembership membership = AppOwnerAccess.membership(clientApplication, ownerId);
+        if (membership == null) {
+            throw new OwnerNotFoundException();
+        }
+        if (membership.getRole() == OwnerRole.OWNER_WRITER
+                && role != OwnerRole.OWNER_WRITER
+                && AppOwnerAccess.writerCount(clientApplication) <= 1) {
+            throw new BadRequestException("Cannot demote the last writer of the application.");
+        }
+        membership.setRole(role);
+        clientApplication.setUpdatedAt(this.dateUtils.now());
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+        log.info("Owner {} role updated to {} on client application {}", ownerId, role, appId);
+        return clientApplication;
+    }
+
+    public ClientApplicationResponseDto toResponse(ClientApplication clientApplication) {
+        return this.toResponse(clientApplication, null);
+    }
+
+    public ClientApplicationResponseDto toResponse(ClientApplication clientApplication, String apiSecret) {
+        return ClientApplicationResponseDto.from(clientApplication, this.hydrateOwners(clientApplication), apiSecret);
+    }
+
+    public void requireAppMember(String appId) {
+        this.findOwnedClientApplication(appId);
+    }
+
+    public void requireAppWriter(String appId) {
+        ClientApplication clientApplication = this.findClientApplicationById(appId);
+        this.validateOwnerWriteAccess(clientApplication);
     }
 
     private ClientApplicationSecretResult rotateSecret(ClientApplication clientApplication) {
@@ -291,7 +354,7 @@ public class ClientApplicationService {
     }
 
     private void requireAuthenticatedOwner() {
-        if (!this.contextComponent.hasRole("OWNER_WRITER") && !this.contextComponent.hasRole("OWNER_VIEWER")) {
+        if (!this.contextComponent.isOwnerActor()) {
             throw new ApplicationForbiddenException();
         }
         this.contextComponent.getAuthenticatedOwnerId();
@@ -300,28 +363,45 @@ public class ClientApplicationService {
     private void validateOwnerMembership(ClientApplication clientApplication) {
         this.requireAuthenticatedOwner();
         String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
-        if (!this.isOwner(clientApplication, authenticatedOwnerId)) {
+        if (!AppOwnerAccess.isMember(clientApplication, authenticatedOwnerId)) {
             throw new ApplicationForbiddenException();
         }
     }
 
-    private void validateOwnerWriteAccess(String ownerId, ClientApplication clientApplication) {
-        if (!this.contextComponent.hasRole("OWNER_WRITER")) {
-            throw new ApplicationForbiddenException();
-        }
-
+    private void validateOwnerWriteAccess(ClientApplication clientApplication) {
+        this.requireAuthenticatedOwner();
         String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
-        if (ownerId != null && !authenticatedOwnerId.equals(ownerId)) {
-            throw new ApplicationForbiddenException();
-        }
-
-        if (clientApplication != null && !this.isOwner(clientApplication, authenticatedOwnerId)) {
+        if (clientApplication != null && !AppOwnerAccess.isWriter(clientApplication, authenticatedOwnerId)) {
             throw new ApplicationForbiddenException();
         }
     }
 
-    private boolean isOwner(ClientApplication clientApplication, String ownerId) {
-        return clientApplication.getOwners() != null
-                && clientApplication.getOwners().stream().anyMatch(owner -> ownerId.equals(owner.getOwnerId()));
+    private List<AppOwnerResponseDto> hydrateOwners(ClientApplication clientApplication) {
+        if (clientApplication.getOwners() == null || clientApplication.getOwners().isEmpty()) {
+            return List.of();
+        }
+        List<AppOwnerResponseDto> owners = new ArrayList<>();
+        for (AppOwnerMembership membership : clientApplication.getOwners()) {
+            if (membership == null || membership.getOwnerId() == null) {
+                continue;
+            }
+            try {
+                Owner owner = this.ownerService.findOwnerById(membership.getOwnerId());
+                owners.add(new AppOwnerResponseDto(owner, membership.getRole()));
+            } catch (OwnerNotFoundException e) {
+                owners.add(new AppOwnerResponseDto(
+                        membership.getOwnerId(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        membership.getRole() != null ? membership.getRole() : OwnerRole.OWNER_VIEWER,
+                        null,
+                        null,
+                        null
+                ));
+            }
+        }
+        return owners;
     }
 }

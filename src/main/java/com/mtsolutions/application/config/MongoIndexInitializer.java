@@ -5,6 +5,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
+import com.mongodb.client.model.Updates;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -73,6 +74,10 @@ public class MongoIndexInitializer {
                             .name("idx_owners_password_reset_token")
                             .sparse(true)
             );
+            long unsetRole = owners.updateMany(Filters.exists("role"), Updates.unset("role")).getModifiedCount();
+            if (unsetRole > 0) {
+                log.info("Removed leftover owners.role from {} document(s); writer/viewer lives on the app membership.", unsetRole);
+            }
 
             MongoCollection<Document> throttles = this.mongoClient.getDatabase(this.database).getCollection("request_throttles");
             throttles.createIndex(

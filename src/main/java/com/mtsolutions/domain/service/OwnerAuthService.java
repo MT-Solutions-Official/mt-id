@@ -10,7 +10,6 @@ import com.mtsolutions.application.exception.TooManyRequestsException;
 import com.mtsolutions.application.utils.AccountStatusUtils;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.NormalizeUtils;
-import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.dto.response.OwnerTokenResponseDto;
 import com.mtsolutions.domain.entity.Owner;
 import com.mtsolutions.domain.repository.OwnerRepository;
@@ -101,11 +100,6 @@ public class OwnerAuthService {
             this.ensureAccountEnabled(owner);
             this.ensureEmailVerified(owner);
 
-            if (owner.getRole() == null) {
-                owner.setRole(OwnerRole.OWNER_VIEWER);
-                this.ownerRepository.persistOrUpdate(owner);
-            }
-
             this.requestThrottleService.clear("owner-login", normalizedEmail);
             return this.issueTokens(owner);
         } catch (ApplicationAuthenticationFailedException e) {
@@ -132,11 +126,6 @@ public class OwnerAuthService {
         this.ensureAccountEnabled(owner);
 
         this.syncGoogleVerifiedEmail(owner);
-
-        if (owner.getRole() == null) {
-            owner.setRole(OwnerRole.OWNER_VIEWER);
-            this.ownerRepository.persistOrUpdate(owner);
-        }
 
         return this.issueTokens(owner);
     }

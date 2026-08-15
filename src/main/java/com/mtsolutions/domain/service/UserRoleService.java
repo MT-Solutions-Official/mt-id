@@ -1,12 +1,10 @@
 package com.mtsolutions.domain.service;
 
-import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.exception.UserRoleAlreadyExistsException;
 import com.mtsolutions.application.exception.UserRoleNotFoundException;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
 import com.mtsolutions.domain.dto.request.CreateUserRoleRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateUserRoleRequestDto;
-import com.mtsolutions.domain.entity.ClientApplication;
 import com.mtsolutions.domain.entity.UserRole;
 import com.mtsolutions.domain.repository.UserRoleRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -25,21 +23,19 @@ import java.util.stream.Collectors;
 public class UserRoleService {
 
     private static final Set<String> RESERVED_ROLE_NAMES = Set.of(
-            "USER", "APPLICATION", "REFRESH_TOKEN", "OWNER_WRITER", "OWNER_VIEWER"
+            "USER", "APPLICATION", "REFRESH_TOKEN", "OWNER", "OWNER_WRITER", "OWNER_VIEWER"
     );
 
     private final UserRoleRepository userRoleRepository;
     private final ClientApplicationService clientApplicationService;
-    private final ContextComponent contextComponent;
 
-    public UserRoleService(UserRoleRepository userRoleRepository, ClientApplicationService clientApplicationService, ContextComponent contextComponent) {
+    public UserRoleService(UserRoleRepository userRoleRepository, ClientApplicationService clientApplicationService) {
         this.userRoleRepository = userRoleRepository;
         this.clientApplicationService = clientApplicationService;
-        this.contextComponent = contextComponent;
     }
 
     public UserRole createUserRole(CreateUserRoleRequestDto request, String appId) {
-        this.validateOwnerAccessToApp(appId);
+        this.validateOwnerWriteAccessToApp(appId);
         String normalizedRoleName = this.normalizeRoleName(request.roleName());
 
         if (this.userRoleRepository.existsByAppIdAndRoleName(appId, normalizedRoleName)) {
@@ -71,7 +67,7 @@ public class UserRoleService {
 
     public UserRole updateUserRole(UpdateUserRoleRequestDto request, String appId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(request.userRoleId());
-        this.validateOwnerAccessToApp(appId);
+        this.validateOwnerWriteAccessToApp(appId);
         if (!appId.equals(userRole.getAppId())) {
             throw new ApplicationForbiddenException();
         }
@@ -92,7 +88,7 @@ public class UserRoleService {
 
     public void deleteUserRole(String userRoleId) {
         UserRole userRole = this.userRoleRepository.findUserRoleById(userRoleId);
-        this.validateOwnerAccessToApp(userRole.getAppId());
+        this.validateOwnerWriteAccessToApp(userRole.getAppId());
         this.userRoleRepository.delete(userRole);
         log.info("User role deleted with ID: {}", userRoleId);
     }
@@ -146,13 +142,10 @@ public class UserRoleService {
     }
 
     private void validateOwnerAccessToApp(String appId) {
-        String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
-        ClientApplication clientApplication = this.clientApplicationService.findClientApplicationById(appId);
-        boolean ownsApplication = clientApplication.getOwners() != null && clientApplication.getOwners().stream()
-                .anyMatch(owner -> authenticatedOwnerId.equals(owner.getOwnerId()));
+        this.clientApplicationService.requireAppMember(appId);
+    }
 
-        if (!ownsApplication) {
-            throw new ApplicationForbiddenException();
-        }
+    private void validateOwnerWriteAccessToApp(String appId) {
+        this.clientApplicationService.requireAppWriter(appId);
     }
 }

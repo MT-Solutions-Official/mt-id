@@ -56,6 +56,38 @@ public class UserExamples {
             }
             """;
 
+    public static final String UPDATE_USER = """
+            {
+              "name": "Jane Doe",
+              "email": "jane.doe@example.com",
+              "currentPassword": "StrongPassword123!",
+              "newPassword": "EvenStrongerPassword123!"
+            }
+            """;
+
+    public static final String USERS_LIST = """
+            [
+              {
+                "userId": "64a7f8b9c0e2a1b3d4f5e6a8",
+                "appId": "507f1f77bcf86cd799439011",
+                "name": "John Doe",
+                "username": "john.doe",
+                "emails": [
+                  {
+                    "email": "john.doe@example.com",
+                    "primary": true,
+                    "verified": false
+                  }
+                ],
+                "phones": [],
+                "roleIds": [],
+                "createdAt": "2026-07-03T18:10:00.000Z",
+                "updatedAt": "2026-07-03T18:10:00.000Z",
+                "active": true
+              }
+            ]
+            """;
+
     public static final String SEND_EMAIL_VERIFICATION = """
             {
               "email": "john.doe@example.com"

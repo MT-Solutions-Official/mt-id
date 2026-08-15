@@ -3,11 +3,14 @@ package com.mtsolutions.domain.controller;
 import com.mtsolutions.domain.dto.request.CreateAddressRequestDto;
 import com.mtsolutions.domain.dto.request.CreateUserRequestDto;
 import com.mtsolutions.domain.dto.request.RemoveUserImageRequestDto;
+import com.mtsolutions.domain.dto.request.UpdateUserRequestDto;
 import com.mtsolutions.domain.dto.request.UploadUserImageRequestDto;
 import com.mtsolutions.domain.entity.User;
 import com.mtsolutions.domain.service.AccountEmailService;
 import com.mtsolutions.domain.service.UserService;
 import jakarta.enterprise.context.ApplicationScoped;
+
+import java.util.List;
 
 @ApplicationScoped
 public class UserController {
@@ -60,6 +63,14 @@ public class UserController {
 
     public User findCurrentUser() {
         return this.userService.findCurrentUser();
+    }
+
+    public List<User> listUsers() {
+        return this.userService.listUsersForCurrentApplication();
+    }
+
+    public User updateCurrentUser(UpdateUserRequestDto request) {
+        return this.userService.updateCurrentUser(request);
     }
 
     public User findUserById(String userId) {

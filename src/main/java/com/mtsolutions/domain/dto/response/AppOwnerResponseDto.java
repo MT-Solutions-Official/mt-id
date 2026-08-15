@@ -1,42 +1,37 @@
 package com.mtsolutions.domain.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.mtsolutions.domain.constant.OwnerRole;
 import com.mtsolutions.domain.entity.Owner;
-import com.mtsolutions.domain.model.Address;
-import com.mtsolutions.domain.model.Document;
 import com.mtsolutions.domain.model.UserImage;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record OwnerResponseDto(
+public record AppOwnerResponseDto(
         String ownerId,
         String name,
         EmailResponseDto email,
         PhoneResponseDto phone,
-        Document document,
         List<UserImage> images,
-        List<Address> addresses,
+        OwnerRole role,
+        Boolean active,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt,
-        LocalDateTime disabledAt,
-        Boolean active
+        LocalDateTime updatedAt
 ) {
 
-    public OwnerResponseDto(Owner owner) {
+    public AppOwnerResponseDto(Owner owner, OwnerRole role) {
         this(
                 owner.getOwnerId(),
                 owner.getName(),
                 owner.getEmail() != null ? new EmailResponseDto(owner.getEmail()) : null,
                 owner.getPhone() != null ? new PhoneResponseDto(owner.getPhone()) : null,
-                owner.getDocument(),
                 owner.getImages(),
-                owner.getAddresses(),
+                role != null ? role : OwnerRole.OWNER_VIEWER,
+                owner.getActive(),
                 owner.getCreatedAt(),
-                owner.getUpdatedAt(),
-                owner.getDisabledAt(),
-                owner.getActive()
+                owner.getUpdatedAt()
         );
     }
 }

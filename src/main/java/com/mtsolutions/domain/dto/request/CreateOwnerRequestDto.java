@@ -1,6 +1,6 @@
 package com.mtsolutions.domain.dto.request;
 
-import com.mtsolutions.domain.constant.OwnerRole;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,5 +17,7 @@ public record CreateOwnerRequestDto (
         CreateDocumentRequestDto document,
         @NotBlank(message = "Password is required")
         String password,
-        OwnerRole role) {
+        @NotNull(message = "Address is required")
+        @Valid
+        CreateAddressRequestDto address) {
 }

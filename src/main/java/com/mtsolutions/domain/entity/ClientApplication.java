@@ -1,6 +1,7 @@
 package com.mtsolutions.domain.entity;
 
 import com.mtsolutions.domain.constant.UserRequiredField;
+import com.mtsolutions.domain.model.AppOwnerMembership;
 import com.mtsolutions.domain.model.EmailSettings;
 import io.quarkus.mongodb.panache.common.MongoEntity;
 import lombok.*;
@@ -24,7 +25,7 @@ public class ClientApplication {
     private String appId;
 
     @Builder.Default
-    private List<Owner> owners = new ArrayList<>();
+    private List<AppOwnerMembership> owners = new ArrayList<>();
     private String name;
     private String description;
     private String logoUrl;

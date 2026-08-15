@@ -1,80 +1,84 @@
-# mt-id
+# MT ID
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+API de identidade multi-aplicação (Quarkus 3 / Java 25) na porta **8081**. Users, papéis e CORS são isolados por `appId`. MongoDB guarda os dados; SMTP envia verificação e reset de senha.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+O console do owner (landing, `/docs`, dashboard) vive no repositório irmão **[mt-id-front](../mt-id-front)** — Vite + React na porta **3000**.
 
-## Running the application in dev mode
+- Swagger: [http://localhost:8081/swagger-ui](http://localhost:8081/swagger-ui)
+- OpenAPI: [http://localhost:8081/q/openapi](http://localhost:8081/q/openapi)
+- Docs de integração: [http://localhost:3000/docs](http://localhost:3000/docs) (com o console no ar)
 
-You can run your application in dev mode that enables live coding using:
+## O que você precisa
 
-```shell script
+- **Java 25** e o wrapper Maven (`./mvnw`)
+- **MongoDB** em `localhost:27017` (database `mt-id` por padrão)
+- **SMTP** para e-mails de verificação e senha (Gmail, Mailtrap, etc.)
+- Opcional: clone de `mt-id-front` se for usar o console
+
+## Subir localmente
+
+### 1. MongoDB
+
+```bash
+docker run --name mt-id-mongo -p 27017:27017 -d mongo:7
+```
+
+Connection string padrão: `mongodb://localhost:27017/` (database `mt-id`). Override com `APP_MT_ID_MONGODB_ENDPOINT` e `APP_MT_ID_MONGODB_DATABASE`.
+
+### 2. API — porta 8081
+
+```bash
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Sobe em [http://localhost:8081](http://localhost:8081).
 
-## Packaging and running the application
+A origin da plataforma (`http://localhost:3000` por padrão) passa no CORS sem `appId`. Override: `APP_MT_ID_CORS_ORIGIN` e `APP_MT_ID_FRONTEND_BASE_URL`.
 
-The application can be packaged using:
+### 3. Console — outro repositório
 
-```shell script
+```bash
+cd ../mt-id-front
+cp .env.example .env   # VITE_API_URL=http://localhost:8081
+npm install
+npm run dev
+```
+
+Abra [http://localhost:3000](http://localhost:3000). Primeiro owner: `/signup`. Se for o único no banco, o e-mail é marcado como verificado no startup (o console funciona sem SMTP). Owners seguintes precisam confirmar o e-mail.
+
+## SMTP
+
+Sem SMTP configurado, o cadastro de user com e-mail falha no envio (o user ainda é criado).
+
+```bash
+export APP_MT_ID_MAILER_FROM="no-reply@seu-dominio.com"
+export APP_MT_ID_MAILER_HOST="smtp.gmail.com"
+export APP_MT_ID_MAILER_PORT="587"
+export APP_MT_ID_MAILER_USERNAME="seu-usuario"
+export APP_MT_ID_MAILER_PASSWORD="sua-senha-de-app"
+```
+
+`APP_MT_ID_MAILER_MOCK=true` evita SMTP real. Não commite senhas — use env, não `application-dev.yml`.
+
+## Google e Cloudinary (opcional)
+
+- **Google (users da sua app):** Client ID OAuth em `googleAudience` da client application.
+- **Google (owner do console):** `VITE_GOOGLE_CLIENT_ID` no `.env` do **mt-id-front** e a audience correspondente nesta API.
+- **Imagens:** `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`. Sem isso, upload de foto quebra; o resto da API segue.
+
+## Primeiro fluxo
+
+1. Owner no console (`mt-id-front`): `/signup` → `/login`.
+2. Aplicações → Nova. Informe `allowedOrigins` do **seu** front (ex. `http://localhost:5173`). Guarde o `apiSecret` — só aparece uma vez.
+3. Backend da sua app: `POST /api/v1/auth/application/token` com headers `apiKey` + `apiSecret`.
+4. Com o JWT `APPLICATION`: `POST /api/v1/users/create`, `GET /api/v1/users`, disable/enable.
+5. No browser do user: header `appId` em toda chamada; login em `POST /api/v1/auth/users/token`. O próprio user atualiza nome/e-mail/senha em `PATCH /api/v1/users/me`.
+
+Contrato completo: `/docs` no console, ou Swagger nesta API.
+
+## Empacotar
+
+```bash
 ./mvnw package
+java -jar target/quarkus-app/quarkus-run.jar
 ```
-
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/mt-id-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)
-- Micrometer Registry Prometheus ([guide](https://quarkus.io/guides/micrometer)): Enable Prometheus support for Micrometer
-- Hibernate Validator ([guide](https://quarkus.io/guides/validation)): Bean validation using Hibernate Validator and Jakarta Validation annotations
-- SmallRye OpenAPI ([guide](https://quarkus.io/guides/openapi-swaggerui)): Generate OpenAPI schemas and serve Swagger UI for REST API documentation
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- SmallRye JWT ([guide](https://quarkus.io/guides/security-jwt)): Secure your applications with JSON Web Token
-- Mailer ([guide](https://quarkus.io/guides/mailer)): Send emails
-- SmallRye Health ([guide](https://quarkus.io/guides/smallrye-health)): Monitor service health
-- Micrometer metrics ([guide](https://quarkus.io/guides/micrometer)): Instrument the runtime and your application with dimensional metrics using Micrometer.
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
-
-### SmallRye Health
-
-Monitor your application's health using SmallRye Health
-
-[Related guide section...](https://quarkus.io/guides/smallrye-health)
