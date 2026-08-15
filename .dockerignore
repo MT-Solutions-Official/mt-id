@@ -1,5 +1,13 @@
-*
-!target/*-runner
-!target/*-runner.jar
-!target/lib/*
-!target/quarkus-app/*
+# Pastas de build
+target/
+
+# Pastas de IDE e controle de versão
+.git/
+.github/
+.idea/
+.vscode/
+
+# Arquivos locais e sensíveis
+*.log
+.DS_Store
+.env
