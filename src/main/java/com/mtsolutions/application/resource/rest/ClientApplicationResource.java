@@ -1,5 +1,6 @@
 package com.mtsolutions.application.resource.rest;
 
+import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.resource.rest.examples.ClientApplicationExamples;
 import com.mtsolutions.domain.controller.ClientApplicationController;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
@@ -7,11 +8,15 @@ import com.mtsolutions.domain.dto.response.ClientApplicationResponseDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateClientApplicationSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
-import jakarta.annotation.security.PermitAll;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -21,7 +26,6 @@ import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import io.quarkus.security.Authenticated;
 
 @RequestScoped
 @Path("/api/v1/client-applications")
@@ -34,12 +38,58 @@ public class ClientApplicationResource {
         this.applicationController = applicationController;
     }
 
+    @GET
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(
+            summary = "List my client applications",
+            description = "Returns the client applications owned by the authenticated owner. The API secret is never returned."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Client applications",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Client applications",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION_LIST)
+            )
+    )
+    public Response listMine() {
+        return Response.ok(
+                this.applicationController.listMyApplications().stream()
+                        .map(ClientApplicationResponseDto::new)
+                        .toList()
+        ).build();
+    }
+
+    @GET
+    @Path("/{appId}")
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(
+            summary = "Get a client application",
+            description = "Returns a client application owned by the authenticated owner. The API secret is never returned."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Client application",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Client application",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION)
+            )
+    )
+    public Response findById(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
+        return Response.ok(new ClientApplicationResponseDto(this.applicationController.findOwnedClientApplication(appId)))
+                .build();
+    }
+
     @POST
     @Path("/create")
     @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Create a new client application",
-            description = "Creates a new client application with the provided details."
+            description = "Creates a new client application with the provided details. The API secret is returned only once."
     )
     @RequestBody(
             content = @Content(
@@ -51,7 +101,7 @@ public class ClientApplicationResource {
 
     )
     @APIResponse(
-            responseCode = "200",
+            responseCode = "201",
             description = "Client application created successfully",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON,
@@ -73,7 +123,7 @@ public class ClientApplicationResource {
     @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Add owners to a client application",
-            description = "Adds owners to a client application with the provided details."
+            description = "Adds owners by owner ID and/or email. The authenticated owner must already own the application."
     )
     @RequestBody(
             content = @Content(
@@ -88,11 +138,35 @@ public class ClientApplicationResource {
             responseCode = "204",
             description = "Owners added to client application successfully"
     )
-    public Response addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
+    public Response addOwnersToClientApplication(@Valid AddOwnersToClientApplicationRequestDto request) {
         this.applicationController.addOwnersToClientApplication(request);
 
         return Response.status(Response.Status.NO_CONTENT)
                 .build();
+    }
+
+    @DELETE
+    @Path("/{appId}/owners/{ownerId}")
+    @RolesAllowed("OWNER_WRITER")
+    @Operation(
+            summary = "Remove an owner from a client application",
+            description = "Removes an owner from the application. The last owner cannot be removed."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Owner removed",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Client application",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION)
+            )
+    )
+    public Response removeOwner(@PathParam(RequestParams.APP_ID) @NotBlank String appId,
+                                @PathParam(RequestParams.OWNER_ID) @NotBlank String ownerId) {
+        return Response.ok(new ClientApplicationResponseDto(
+                this.applicationController.removeOwnerFromClientApplication(appId, ownerId)
+        )).build();
     }
 
     @PATCH
@@ -127,7 +201,7 @@ public class ClientApplicationResource {
     @RolesAllowed("OWNER_WRITER")
     @Operation(
             summary = "Update client application settings",
-            description = "Updates allowed origins, Google audience and token TTLs for a client application."
+            description = "Updates branding, email settings, allowed origins, Google audience, required user fields and token TTLs. Only provided fields are changed. The API secret is never returned."
     )
     @RequestBody(
             content = @Content(
@@ -144,12 +218,78 @@ public class ClientApplicationResource {
                     mediaType = MediaType.APPLICATION_JSON,
                     examples = @ExampleObject(
                             name = "Client Application Updated",
-                            value = ClientApplicationExamples.CLIENT_APPLICATION_CREATED)
+                            value = ClientApplicationExamples.CLIENT_APPLICATION)
             )
     )
-    public Response updateSettings(UpdateClientApplicationSettingsRequestDto request) {
+    public Response updateSettings(@Valid UpdateClientApplicationSettingsRequestDto request) {
         return Response.ok(new ClientApplicationResponseDto(this.applicationController.updateSettings(request)))
                 .build();
+    }
+
+    @PATCH
+    @Path("/{appId}/disable")
+    @RolesAllowed("OWNER_WRITER")
+    @Operation(
+            summary = "Disable a client application",
+            description = "Disables the application. Existing application access tokens are rejected on subsequent requests."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Client application disabled",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Disabled client application",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION)
+            )
+    )
+    public Response disable(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
+        return Response.ok(new ClientApplicationResponseDto(this.applicationController.disableClientApplication(appId)))
+                .build();
+    }
+
+    @PATCH
+    @Path("/{appId}/enable")
+    @RolesAllowed("OWNER_WRITER")
+    @Operation(
+            summary = "Enable a client application",
+            description = "Re-enables a previously disabled client application."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Client application enabled",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Enabled client application",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION)
+            )
+    )
+    public Response enable(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
+        return Response.ok(new ClientApplicationResponseDto(this.applicationController.enableClientApplication(appId)))
+                .build();
+    }
+
+    @PATCH
+    @Path("/{appId}/rotate-secret")
+    @RolesAllowed("OWNER_WRITER")
+    @Operation(
+            summary = "Rotate API secret as owner",
+            description = "Rotates the API secret of an owned client application and returns the new secret only once."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "API secret rotated successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Client Application Secret Rotated",
+                            value = ClientApplicationExamples.CLIENT_APPLICATION_SECRET_ROTATED)
+            )
+    )
+    public Response rotateOwnedSecret(@PathParam(RequestParams.APP_ID) @NotBlank String appId) {
+        var result = this.applicationController.rotateOwnedClientApplicationSecret(appId);
+        return Response.ok(new ClientApplicationResponseDto(result.clientApplication(), result.apiSecret())).build();
     }
 
     @PATCH

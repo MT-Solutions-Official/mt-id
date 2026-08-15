@@ -4,11 +4,13 @@ import com.mtsolutions.application.cache.AccountStatusCache;
 import com.mtsolutions.application.cache.AllowedOriginCache;
 import com.mtsolutions.application.common.ContextComponent;
 import com.mtsolutions.application.exception.ApplicationForbiddenException;
+import com.mtsolutions.application.exception.OwnerNotFoundException;
 import com.mtsolutions.application.utils.DateUtils;
 import com.mtsolutions.application.utils.KeyGeneratorUtils;
 import com.mtsolutions.application.utils.NormalizeUtils;
 import com.mtsolutions.domain.dto.request.AddOwnersToClientApplicationRequestDto;
 import com.mtsolutions.domain.dto.request.CreateClientApplicationRequestDto;
+import com.mtsolutions.domain.dto.request.EmailSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateClientApplicationSettingsRequestDto;
 import com.mtsolutions.domain.dto.request.UpdateRequiredUserFieldsRequestDto;
 import com.mtsolutions.domain.entity.ClientApplication;
@@ -17,10 +19,13 @@ import com.mtsolutions.domain.model.ClientApplicationSecretResult;
 import com.mtsolutions.domain.model.EmailSettings;
 import com.mtsolutions.domain.repository.ClientApplicationRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @ApplicationScoped
 @Slf4j
@@ -56,7 +61,7 @@ public class ClientApplicationService {
     public ClientApplicationSecretResult createClientApplication(CreateClientApplicationRequestDto request) {
         log.info("Creating client application with name: {}", request.name());
 
-        this.validateOwnerAccess(request.ownerId(), null);
+        this.validateOwnerWriteAccess(request.ownerId(), null);
 
         Owner owner = this.ownerService.findOwnerById(request.ownerId());
         String apiKey = this.keyGeneratorUtils.generateApiKey();
@@ -87,33 +92,62 @@ public class ClientApplicationService {
         return new ClientApplicationSecretResult(clientApplication, apiSecret);
     }
 
+    public List<ClientApplication> listMyApplications() {
+        this.requireAuthenticatedOwner();
+        return this.clientApplicationRepository.findByOwnerId(this.contextComponent.getAuthenticatedOwnerId());
+    }
+
+    public ClientApplication findOwnedClientApplication(String appId) {
+        ClientApplication clientApplication = this.findClientApplicationById(appId);
+        this.validateOwnerMembership(clientApplication);
+        return clientApplication;
+    }
+
     public ClientApplication findClientApplicationById(String appId) {
         return this.clientApplicationRepository.findClientApplicationById(appId);
     }
 
     public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
-        this.validateOwnerAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(null, clientApplication);
         if (clientApplication.getOwners() == null) {
             clientApplication.setOwners(new ArrayList<>());
         }
 
-        for (String ownerId : request.ownerIds()) {
-            Owner owner = this.ownerService.findOwnerById(ownerId);
-
-            if (clientApplication.getOwners().stream().noneMatch(o -> o.getOwnerId().equals(owner.getOwnerId()))) {
+        for (Owner owner : this.resolveOwnersToAdd(request)) {
+            if (clientApplication.getOwners().stream().noneMatch(existing -> existing.getOwnerId().equals(owner.getOwnerId()))) {
                 clientApplication.getOwners().add(owner);
             }
         }
 
+        clientApplication.setUpdatedAt(this.dateUtils.now());
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
 
         log.info("Owners added to client application with ID: {}", clientApplication.getAppId());
     }
 
+    public ClientApplication removeOwnerFromClientApplication(String appId, String ownerId) {
+        ClientApplication clientApplication = this.findClientApplicationById(appId);
+        this.validateOwnerWriteAccess(null, clientApplication);
+        List<Owner> owners = clientApplication.getOwners();
+        if (owners == null || owners.size() <= 1) {
+            throw new BadRequestException("Cannot remove the last owner of the application.");
+        }
+
+        boolean removed = owners.removeIf(owner -> ownerId.equals(owner.getOwnerId()));
+        if (!removed) {
+            throw new OwnerNotFoundException();
+        }
+
+        clientApplication.setUpdatedAt(this.dateUtils.now());
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+        log.info("Owner {} removed from client application {}", ownerId, appId);
+        return clientApplication;
+    }
+
     public void updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
-        this.validateOwnerAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(null, clientApplication);
         clientApplication.setRequiredUserFields(request.requiredUserFields() != null ? request.requiredUserFields() : new ArrayList<>());
         clientApplication.setUpdatedAt(this.dateUtils.now());
 
@@ -124,8 +158,27 @@ public class ClientApplicationService {
 
     public ClientApplication updateSettings(UpdateClientApplicationSettingsRequestDto request) {
         ClientApplication clientApplication = this.findClientApplicationById(request.appId());
-        this.validateOwnerAccess(null, clientApplication);
+        this.validateOwnerWriteAccess(null, clientApplication);
+        if (request.name() != null) {
+            String name = NormalizeUtils.trimToNull(request.name());
+            if (name == null) {
+                throw new BadRequestException("Name cannot be blank.");
+            }
+            clientApplication.setName(name);
+        }
+        if (request.description() != null) {
+            clientApplication.setDescription(NormalizeUtils.trimToNull(request.description()));
+        }
+        if (request.logoUrl() != null) {
+            clientApplication.setLogoUrl(NormalizeUtils.trimToNull(request.logoUrl()));
+        }
+        if (request.emailSettings() != null) {
+            clientApplication.setEmailSettings(mapEmailSettings(request.emailSettings()));
+        }
         if (request.allowedOrigins() != null) {
+            if (request.allowedOrigins().isEmpty()) {
+                throw new BadRequestException("Allowed origins list cannot be empty.");
+            }
             clientApplication.setAllowedOrigins(request.allowedOrigins());
         }
         if (request.jwtExpirationInMinutes() != null) {
@@ -137,6 +190,9 @@ public class ClientApplicationService {
         if (request.googleAudience() != null) {
             clientApplication.setGoogleAudience(NormalizeUtils.trimToNull(request.googleAudience()));
         }
+        if (request.requiredUserFields() != null) {
+            clientApplication.setRequiredUserFields(request.requiredUserFields());
+        }
         clientApplication.setUpdatedAt(this.dateUtils.now());
         this.clientApplicationRepository.persistOrUpdate(clientApplication);
         this.allowedOriginCache.invalidate(clientApplication.getAppId());
@@ -144,13 +200,44 @@ public class ClientApplicationService {
         return clientApplication;
     }
 
+    public ClientApplication disableClientApplication(String appId) {
+        ClientApplication clientApplication = this.findClientApplicationById(appId);
+        this.validateOwnerWriteAccess(null, clientApplication);
+        clientApplication.setActive(false);
+        clientApplication.setUpdatedAt(this.dateUtils.now());
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+        this.allowedOriginCache.invalidate(clientApplication.getAppId());
+        this.accountStatusCache.putApplicationDisabled(clientApplication.getAppId(), true);
+        log.info("Client application disabled with ID: {}", appId);
+        return clientApplication;
+    }
+
+    public ClientApplication enableClientApplication(String appId) {
+        ClientApplication clientApplication = this.findClientApplicationById(appId);
+        this.validateOwnerWriteAccess(null, clientApplication);
+        clientApplication.setActive(true);
+        clientApplication.setUpdatedAt(this.dateUtils.now());
+        this.clientApplicationRepository.persistOrUpdate(clientApplication);
+        this.allowedOriginCache.invalidate(clientApplication.getAppId());
+        this.accountStatusCache.putApplicationDisabled(clientApplication.getAppId(), false);
+        log.info("Client application enabled with ID: {}", appId);
+        return clientApplication;
+    }
+
     public ClientApplicationSecretResult rotateClientApplicationSecret() {
         if (!this.contextComponent.hasRole("APPLICATION")) {
             throw new ApplicationForbiddenException();
         }
+        return this.rotateSecret(this.findClientApplicationById(this.contextComponent.getAuthenticatedAppId()));
+    }
 
-        String appId = this.contextComponent.getAuthenticatedAppId();
+    public ClientApplicationSecretResult rotateOwnedClientApplicationSecret(String appId) {
         ClientApplication clientApplication = this.findClientApplicationById(appId);
+        this.validateOwnerWriteAccess(null, clientApplication);
+        return this.rotateSecret(clientApplication);
+    }
+
+    private ClientApplicationSecretResult rotateSecret(ClientApplication clientApplication) {
         String apiSecret = this.keyGeneratorUtils.generateApiSecret();
         String hashedApiSecret = this.bcryptService.encryptPassword(apiSecret);
 
@@ -162,7 +249,31 @@ public class ClientApplicationService {
         return new ClientApplicationSecretResult(clientApplication, apiSecret);
     }
 
-    private EmailSettings mapEmailSettings(com.mtsolutions.domain.dto.request.EmailSettingsRequestDto request) {
+    private List<Owner> resolveOwnersToAdd(AddOwnersToClientApplicationRequestDto request) {
+        Set<String> ownerIds = new LinkedHashSet<>();
+        if (request.ownerIds() != null) {
+            for (String ownerId : request.ownerIds()) {
+                if (NormalizeUtils.trimToNull(ownerId) != null) {
+                    ownerIds.add(ownerId.trim());
+                }
+            }
+        }
+        if (request.emails() != null) {
+            for (String email : request.emails()) {
+                String normalizedEmail = NormalizeUtils.normalizeEmail(email);
+                if (normalizedEmail == null) {
+                    continue;
+                }
+                ownerIds.add(this.ownerService.findOwnerByEmail(normalizedEmail).getOwnerId());
+            }
+        }
+        if (ownerIds.isEmpty()) {
+            throw new BadRequestException("Owner IDs or emails are required.");
+        }
+        return ownerIds.stream().map(this.ownerService::findOwnerById).toList();
+    }
+
+    private EmailSettings mapEmailSettings(EmailSettingsRequestDto request) {
         if (request == null) {
             return null;
         }
@@ -179,7 +290,22 @@ public class ClientApplicationService {
                 .build();
     }
 
-    private void validateOwnerAccess(String ownerId, ClientApplication clientApplication) {
+    private void requireAuthenticatedOwner() {
+        if (!this.contextComponent.hasRole("OWNER_WRITER") && !this.contextComponent.hasRole("OWNER_VIEWER")) {
+            throw new ApplicationForbiddenException();
+        }
+        this.contextComponent.getAuthenticatedOwnerId();
+    }
+
+    private void validateOwnerMembership(ClientApplication clientApplication) {
+        this.requireAuthenticatedOwner();
+        String authenticatedOwnerId = this.contextComponent.getAuthenticatedOwnerId();
+        if (!this.isOwner(clientApplication, authenticatedOwnerId)) {
+            throw new ApplicationForbiddenException();
+        }
+    }
+
+    private void validateOwnerWriteAccess(String ownerId, ClientApplication clientApplication) {
         if (!this.contextComponent.hasRole("OWNER_WRITER")) {
             throw new ApplicationForbiddenException();
         }
@@ -189,9 +315,13 @@ public class ClientApplicationService {
             throw new ApplicationForbiddenException();
         }
 
-        if (clientApplication != null && clientApplication.getOwners() != null
-                && clientApplication.getOwners().stream().noneMatch(owner -> authenticatedOwnerId.equals(owner.getOwnerId()))) {
+        if (clientApplication != null && !this.isOwner(clientApplication, authenticatedOwnerId)) {
             throw new ApplicationForbiddenException();
         }
+    }
+
+    private boolean isOwner(ClientApplication clientApplication, String ownerId) {
+        return clientApplication.getOwners() != null
+                && clientApplication.getOwners().stream().anyMatch(owner -> ownerId.equals(owner.getOwnerId()));
     }
 }

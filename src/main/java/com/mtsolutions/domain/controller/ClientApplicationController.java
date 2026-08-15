@@ -9,6 +9,8 @@ import com.mtsolutions.domain.model.ClientApplicationSecretResult;
 import com.mtsolutions.domain.service.ClientApplicationService;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.List;
+
 @ApplicationScoped
 public class ClientApplicationController {
 
@@ -22,8 +24,20 @@ public class ClientApplicationController {
         return this.clientApplicationService.createClientApplication(request);
     }
 
+    public List<ClientApplication> listMyApplications() {
+        return this.clientApplicationService.listMyApplications();
+    }
+
+    public ClientApplication findOwnedClientApplication(String appId) {
+        return this.clientApplicationService.findOwnedClientApplication(appId);
+    }
+
     public void addOwnersToClientApplication(AddOwnersToClientApplicationRequestDto request) {
         this.clientApplicationService.addOwnersToClientApplication(request);
+    }
+
+    public ClientApplication removeOwnerFromClientApplication(String appId, String ownerId) {
+        return this.clientApplicationService.removeOwnerFromClientApplication(appId, ownerId);
     }
 
     public void updateRequiredUserFields(UpdateRequiredUserFieldsRequestDto request) {
@@ -34,7 +48,19 @@ public class ClientApplicationController {
         return this.clientApplicationService.updateSettings(request);
     }
 
+    public ClientApplication disableClientApplication(String appId) {
+        return this.clientApplicationService.disableClientApplication(appId);
+    }
+
+    public ClientApplication enableClientApplication(String appId) {
+        return this.clientApplicationService.enableClientApplication(appId);
+    }
+
     public ClientApplicationSecretResult rotateClientApplicationSecret() {
         return this.clientApplicationService.rotateClientApplicationSecret();
+    }
+
+    public ClientApplicationSecretResult rotateOwnedClientApplicationSecret(String appId) {
+        return this.clientApplicationService.rotateOwnedClientApplicationSecret(appId);
     }
 }

@@ -6,6 +6,8 @@ import com.mtsolutions.domain.service.AccountEmailService;
 import com.mtsolutions.domain.service.OwnerService;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.util.List;
+
 @ApplicationScoped
 public class OwnerController {
 
@@ -41,6 +43,14 @@ public class OwnerController {
 
     public Owner findCurrentOwner() {
         return this.ownerService.findCurrentOwner();
+    }
+
+    public List<Owner> listOwners() {
+        return this.ownerService.listOwners();
+    }
+
+    public Owner findOwnerForConsole(String ownerId) {
+        return this.ownerService.findOwnerForConsole(ownerId);
     }
 
     public Owner disableOwner(String ownerId) {

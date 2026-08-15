@@ -21,6 +21,8 @@ import com.mtsolutions.domain.repository.OwnerRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
+
 @ApplicationScoped
 @Slf4j
 public class OwnerService {
@@ -103,6 +105,16 @@ public class OwnerService {
         return this.findOwnerById(ownerId);
     }
 
+    public List<Owner> listOwners() {
+        this.requireAuthenticatedOwner();
+        return this.ownerRepository.listAll();
+    }
+
+    public Owner findOwnerForConsole(String ownerId) {
+        this.requireAuthenticatedOwner();
+        return this.findOwnerById(ownerId);
+    }
+
     public Owner disableOwner(String ownerId) {
         if (!this.contextComponent.hasRole("OWNER_WRITER")) {
             throw new ApplicationForbiddenException();
@@ -143,8 +155,19 @@ public class OwnerService {
     }
 
     public Owner findOwnerByEmail(String email) {
-        return this.ownerRepository.findOwnerByEmail(NormalizeUtils.normalizeEmail(email))
+        String normalizedEmail = NormalizeUtils.normalizeEmail(email);
+        if (normalizedEmail == null) {
+            throw new OwnerNotFoundException();
+        }
+        return this.ownerRepository.findOwnerByEmail(normalizedEmail)
                 .orElseThrow(OwnerNotFoundException::new);
+    }
+
+    private void requireAuthenticatedOwner() {
+        if (!this.contextComponent.hasRole("OWNER_WRITER") && !this.contextComponent.hasRole("OWNER_VIEWER")) {
+            throw new ApplicationForbiddenException();
+        }
+        this.contextComponent.getAuthenticatedOwnerId();
     }
 
     private void validateOwnerCreationAccess(boolean bootstrapping) {

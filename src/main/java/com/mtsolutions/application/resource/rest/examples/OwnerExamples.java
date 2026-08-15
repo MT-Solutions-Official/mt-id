@@ -39,6 +39,21 @@ public class OwnerExamples {
             }
             """;
 
+    public static final String OWNER_LIST = """
+            [
+              {
+                "ownerId": "64a7f8b9c0e2a1b3d4f5e6a7",
+                "name": "Thiago Picanço",
+                "email": {
+                  "email": "thiago@mtsolutions.com",
+                  "verified": true
+                },
+                "role": "OWNER_WRITER",
+                "active": true
+              }
+            ]
+            """;
+
     public static final String SEND_EMAIL_VERIFICATION = """
             {
               "email": "thiago@mtsolutions.com"

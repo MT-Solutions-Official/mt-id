@@ -62,6 +62,51 @@ public class OwnerResource {
         return Response.ok(new OwnerResponseDto(this.ownerController.findCurrentOwner())).build();
     }
 
+    @GET
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(
+            summary = "List owners",
+            description = "Returns all platform owners. Intended for the MT-ID console."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Owners",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Owners",
+                            value = OwnerExamples.OWNER_LIST)
+            )
+    )
+    public Response list() {
+        return Response.ok(
+                this.ownerController.listOwners().stream()
+                        .map(OwnerResponseDto::new)
+                        .toList()
+        ).build();
+    }
+
+    @GET
+    @Path("/{ownerId}")
+    @RolesAllowed({"OWNER_WRITER", "OWNER_VIEWER"})
+    @Operation(
+            summary = "Get owner by ID",
+            description = "Returns a platform owner by ID."
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Owner",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    examples = @ExampleObject(
+                            name = "Owner",
+                            value = OwnerExamples.OWNER_CREATED)
+            )
+    )
+    public Response findById(@PathParam(RequestParams.OWNER_ID) String ownerId) {
+        return Response.ok(new OwnerResponseDto(this.ownerController.findOwnerForConsole(ownerId))).build();
+    }
+
     @PATCH
     @Path("/{ownerId}/disable")
     @RolesAllowed("OWNER_WRITER")

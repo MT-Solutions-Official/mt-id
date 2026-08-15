@@ -3,9 +3,11 @@ package com.mtsolutions.domain.repository;
 import com.mtsolutions.application.exception.ClientApplicationNotFoundException;
 import com.mtsolutions.domain.entity.ClientApplication;
 import io.quarkus.mongodb.panache.PanacheMongoRepositoryBase;
+import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.bson.types.ObjectId;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -21,6 +23,13 @@ public class ClientApplicationRepository implements PanacheMongoRepositoryBase<C
 
     public Optional<ClientApplication> findClientApplicationByApiKey(String apiKey) {
         return find("apiKey", apiKey).firstResultOptional();
+    }
+
+    public List<ClientApplication> findByOwnerId(String ownerId) {
+        if (!ObjectId.isValid(ownerId)) {
+            return List.of();
+        }
+        return find("{'owners._id': ?1}", Sort.descending("createdAt"), new ObjectId(ownerId)).list();
     }
 
     public boolean existsByAllowedOrigin(String origin) {
