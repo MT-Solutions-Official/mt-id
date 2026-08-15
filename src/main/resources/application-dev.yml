@@ -8,7 +8,7 @@ quarkus:
       enabled: false
 
   mongodb:
-    connection-string: ${APP_MT_ID_MONGODB_ENDPOINT:mongodb://localhost:27017/}
+    connection-string: ${APP_MT_ID_MONGODB_ENDPOINT:mongodb+srv://matteusjackson_db_user:zYsexdyvg4UpSRAC@mt-id-db.gik0cx7.mongodb.net/}
     database: ${APP_MT_ID_MONGODB_DATABASE:mt-id}
 
   mailer:
