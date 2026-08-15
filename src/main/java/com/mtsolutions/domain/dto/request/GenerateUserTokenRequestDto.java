@@ -10,8 +10,6 @@ public record GenerateUserTokenRequestDto(
         @Email(message = "Email should be valid")
         String email,
         @NotBlank(message = "Password is required")
-        String password,
-        @NotBlank(message = "App ID is required")
-        String appId
+        String password
 ) {
 }

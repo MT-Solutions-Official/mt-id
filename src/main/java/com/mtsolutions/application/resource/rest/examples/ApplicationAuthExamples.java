@@ -30,8 +30,7 @@ public class ApplicationAuthExamples {
     public static final String USER_TOKEN_REQUEST = """
             {
               "email": "user@example.com",
-              "password": "user-password",
-              "appId": "507f1f77bcf86cd799439011"
+              "password": "user-password"
             }
             """;
 

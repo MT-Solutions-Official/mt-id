@@ -16,6 +16,8 @@ quarkus:
     host: ${APP_MT_ID_MAILER_HOST:smtp.gmail.com}
     port: ${APP_MT_ID_MAILER_PORT:587}
     start-tls: REQUIRED
+    login: REQUIRED
+    auth-methods: DIGEST-MD5 CRAMSHA256 CRAMSHA1 CRAMMD5 PLAIN LOGIN
     username: ${APP_MT_ID_MAILER_USERNAME:matteusjackson@gmail.com}
     password: ${APP_MT_ID_MAILER_PASSWORD:wgno joip waoe tmmq}
     mock: ${APP_MT_ID_MAILER_MOCK:false}

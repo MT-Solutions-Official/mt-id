@@ -19,12 +19,17 @@ public class UserRepository implements PanacheMongoRepositoryBase<User, String> 
     }
 
     public Optional<User> findUserByAppIdAndEmail(String appId, String email) {
-        return find("{appId: ?1, 'emails.email': {$regex: ?2, $options: 'i'}}", appId, "^" + Pattern.quote(email) + "$")
-                .firstResultOptional();
+        if (appId == null || email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        return find("{appId: ?1, 'emails.email': ?2}", appId, email).firstResultOptional();
     }
 
     public boolean existsByAppIdAndEmail(String appId, String email) {
-        return count("{appId: ?1, 'emails.email': {$regex: ?2, $options: 'i'}}", appId, "^" + Pattern.quote(email) + "$") > 0;
+        if (appId == null || email == null || email.isBlank()) {
+            return false;
+        }
+        return count("{appId: ?1, 'emails.email': ?2}", appId, email) > 0;
     }
 
     public boolean existsByAppIdAndUsername(String appId, String username) {

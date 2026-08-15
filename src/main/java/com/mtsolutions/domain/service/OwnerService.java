@@ -66,7 +66,7 @@ public class OwnerService {
 
         Email email = Email.builder()
                 .email(normalizedEmail)
-                .verified(false)
+                .verified(bootstrapping)
                 .build();
 
         Phone phone = Phone.builder()

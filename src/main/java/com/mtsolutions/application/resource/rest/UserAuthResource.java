@@ -1,5 +1,6 @@
 package com.mtsolutions.application.resource.rest;
 
+import com.mtsolutions.application.common.RequestParams;
 import com.mtsolutions.application.resource.rest.examples.ApplicationAuthExamples;
 import com.mtsolutions.domain.controller.UserAuthController;
 import com.mtsolutions.domain.dto.request.GenerateUserGoogleTokenRequestDto;
@@ -9,7 +10,9 @@ import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.MediaType;
@@ -37,7 +40,7 @@ public class UserAuthResource {
     @PermitAll
     @Operation(
             summary = "Generate user token",
-            description = "Authenticates a user using email, password and appId and returns MT-ID JWT tokens."
+            description = "Authenticates a user using email and password. Send the client application id in the appId header."
     )
     @RequestBody(
             content = @Content(
@@ -57,8 +60,9 @@ public class UserAuthResource {
                             value = ApplicationAuthExamples.USER_TOKEN_RESPONSE)
             )
     )
-    public Response generateUserToken(@NotNull @Valid GenerateUserTokenRequestDto request) {
-        UserTokenResponseDto response = this.userAuthController.generateUserToken(request.email(), request.password(), request.appId());
+    public Response generateUserToken(@HeaderParam(RequestParams.APP_ID) @NotBlank String appId,
+                                      @NotNull @Valid GenerateUserTokenRequestDto request) {
+        UserTokenResponseDto response = this.userAuthController.generateUserToken(request.email(), request.password(), appId);
         return Response.status(Response.Status.OK)
                 .entity(response)
                 .build();
